@@ -2,7 +2,8 @@
 //
 // This is NOT a second classifier: finger geometry is classified once, in
 // Python (finger_state.classify_pose -> "pose"). Unity only combines the two
-// hands' poses and debounces the result over time:
+// hands' poses (point+point -> ribbon; frame+frame "L shapes" -> frame, or
+// peace+peace if FrameFingers = IndexAndMiddle) and debounces the result over time:
 //
 //   Idle ──candidate seen, both hands "tracked"──▶ Confirming
 //   Confirming ──held for ConfirmSeconds──▶ Active
@@ -22,6 +23,14 @@ namespace FilterCMR.Gestures
     {
         public float ConfirmSeconds = 0.20f;
         public float ReleaseSeconds = 0.25f;
+        /// <summary>Fingers that form the frame gesture (default: thumb + index L shape).</summary>
+        public FrameFingers FrameFingers = FrameFingers.IndexAndThumb;
+
+        /// <summary>The per-hand Python pose that makes the frame gesture.</summary>
+        public static HandPose FramePose(FrameFingers f) => f == FrameFingers.IndexAndMiddle ? HandPose.Peace : HandPose.Frame;
+
+        /// <summary>The second fingertip (besides the index tip) used for the frame corners.</summary>
+        public static int FrameSecondTip(FrameFingers f) => f == FrameFingers.IndexAndMiddle ? HandLandmark.MiddleTip : HandLandmark.ThumbTip;
 
         public GestureState State { get; private set; } = GestureState.Idle;
         /// <summary>The gesture being confirmed (Confirming) or held (Active/Releasing).</summary>
@@ -49,11 +58,13 @@ namespace FilterCMR.Gestures
             }
         }
 
-        public static GestureType Classify(HandStatus left, HandPose leftPose, HandStatus right, HandPose rightPose)
+        public static GestureType Classify(HandStatus left, HandPose leftPose, HandStatus right, HandPose rightPose,
+                                           FrameFingers frameFingers = FrameFingers.IndexAndThumb)
         {
             if (left == HandStatus.Lost || right == HandStatus.Lost) return GestureType.None;
             if (leftPose == HandPose.Point && rightPose == HandPose.Point) return GestureType.TwoFingerPoint;
-            if (leftPose == HandPose.Peace && rightPose == HandPose.Peace) return GestureType.TwoFingerFrame;
+            HandPose frame = FramePose(frameFingers);
+            if (leftPose == frame && rightPose == frame) return GestureType.TwoFingerFrame;
             return GestureType.None;
         }
 
@@ -62,7 +73,7 @@ namespace FilterCMR.Gestures
         {
             if (dt < 0) dt = 0;
             GestureType before = Current;
-            GestureType cand = Classify(left, leftPose, right, rightPose);
+            GestureType cand = Classify(left, leftPose, right, rightPose, FrameFingers);
             bool canStart = left == HandStatus.Detected && right == HandStatus.Detected;
             Candidate = cand;
 

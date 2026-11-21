@@ -9,7 +9,7 @@ FILTER CMR is two cooperating processes on the same Mac. Python tracks hands; Un
  │                                                                                   │
  │  webcam ──► camera.py ──► hand_detector.py ──────────► finger_state.py            │
  │  (AVFoundation)  newest     MediaPipe HandLandmarker     per-hand pose:           │
- │                  frame      mirror x · Left/Right        point/peace/open/fist/   │
+ │                  frame      mirror x · Left/Right        point/frame/peace/open/ │
  │                  wins       One Euro · hold/drop         other  (+ ext flags)     │
  │                    │                    │                                         │
  │                    │                    ▼                                         │
@@ -69,7 +69,8 @@ Finger geometry is classified once, in Python (`finger_state.classify_pose` → 
 | Left pose | Right pose | Gesture |
 |---|---|---|
 | `point` | `point` | **TWO FINGER POINT** |
-| `peace` | `peace` | **TWO FINGER FRAME** |
+| `frame` (thumb + index "L") | `frame` | **TWO FINGER FRAME** (default) |
+| `peace` | `peace` | **TWO FINGER FRAME** only if *Frame Fingers = Index And Middle* in the settings asset |
 | anything else / a hand missing | | none |
 
 It then debounces the result over time. The gesture activates after both hands hold the poses for `gestureConfirmSeconds` (0.2 s). It survives dropouts shorter than `gestureReleaseSeconds` (0.25 s). Hands in `held` state (briefly lost by MediaPipe) can keep a gesture alive but cannot start one.
@@ -125,7 +126,7 @@ How to find out which mode your Mac needs: [UNITY_TESTING.md](UNITY_TESTING.md#c
 ## Interactive masks and the halftone composite (Milestones 3 and 4)
 
 ```
- HandTrackingManager ──► GestureManager ──► CurrentGesture (point / peace, debounced)
+ HandTrackingManager ──► GestureManager ──► CurrentGesture (point / frame, debounced)
    HandView.Smoothed[21]          │
         │ IMAGE coords             ▼
         │              MaskTransitions (mode: Auto / Ribbon / Quad / Off)
@@ -164,7 +165,7 @@ The mask is evaluated per pixel from a few uniforms, as a signed distance to the
 * **Mask value:** `1 − smoothstep(−feather/2, +feather/2, d)`, so the edge is soft, resolution-independent and anti-aliased.
 * **Edge effects:** the distance also drives the inner cyan glow, the optional outline, and a noise displacement for an organic boundary.
 
-Both masks are evaluated, weighted by their fade value, and combined with `max`. That is how a point→peace switch becomes a cross-fade.
+Both masks are evaluated, weighted by their fade value, and combined with `max`. That is how a point→frame switch becomes a cross-fade.
 
 The CPU has equivalents of both distance functions, using the same formulas (`RibbonMaskGenerator.SignedDistance`, `QuadrilateralMaskGenerator.SignedDistance`), used by the tests and the shader preview harness.
 
@@ -189,7 +190,7 @@ The shader inverts the RawImage `uvRect` to get `q = (s, 1 − t)` from the text
 
 ### Quad (TWO FINGER FRAME)
 
-1. Inputs: left index (8), left middle (12), right index (8), right middle (12), smoothed **by identity** before any ordering. Smoothing after ordering would blend unrelated corners whenever the order changes.
+1. Inputs: the index tip (8) and the **thumb tip (4)** of each hand: the corners of two "L" shapes, like framing a photo. With *Frame Fingers = Index And Middle* the middle tip (12) replaces the thumb. All four are smoothed **by identity** before any ordering. Smoothing after ordering would blend unrelated corners whenever the order changes.
 2. **Ordering:** the convex hull of the four points, using Andrew's monotone chain. It always produces a simple, consistently wound polygon that cannot self-intersect or invert, whatever order the tips arrive in (a quad, or a triangle when one tip lies inside the others). This is fuzz-tested on 20,000 random configurations.
 3. The hull is rotated to start at the lowest source index, normally the left index tip. That ties the perspective grid's orientation to finger identity, so it doesn't spin from frame to frame.
 4. A **homography** (Heckbert's square→quad mapping) and its inverse let the halftone grid follow the quad's perspective (*Perspective Dots*). Polygons under 4·10⁻⁴ image-heights² count as invalid and are hidden.

@@ -52,10 +52,10 @@ public class Integration
         Assert.IsTrue(vrx.Start(vport), vrx.LastError);
 
         var py = StartPython($"tools/fake_tracker.py --port {port} --video-port {vport} --stream-video " +
-                             "--duration 4 --pose cycle --cycle-seconds 1.2 --drop-every 2");
+                             "--duration 4.4 --pose cycle --cycle-seconds 1.0 --drop-every 2");
         var msg = new TrackingMessage();
         byte[] jpeg = null;
-        bool sawPoint = false, sawPeace = false, sawOpen = false, sawBoth = false, sawRightMissing = false, sawBye = false;
+        bool sawPoint = false, sawPeace = false, sawOpen = false, sawFrame = false, sawBoth = false, sawRightMissing = false, sawBye = false;
         int polls = 0, got = 0, videoFrames = 0, vw = 0, vh = 0;
         bool jpegMarkersOk = true;
         float minX = 1, maxX = 0;
@@ -79,6 +79,7 @@ public class Integration
                     if (hand.pose == HandPose.Point) sawPoint = true;
                     if (hand.pose == HandPose.Peace) sawPeace = true;
                     if (hand.pose == HandPose.Open) sawOpen = true;
+                    if (hand.pose == HandPose.Frame) sawFrame = true;
                     for (int i = 0; i < 21; i++)
                     {
                         float x = hand.X(i), y = hand.Y(i);
@@ -104,7 +105,7 @@ public class Integration
 
         Assert.Greater(rx.PacketsReceived, 90, "expected ~30 packets/s for 4 s");
         Assert.AreEqual(0L, rx.MalformedPackets);
-        Assert.IsTrue(sawPoint && sawPeace && sawOpen, "expected point, peace and open poses");
+        Assert.IsTrue(sawPoint && sawFrame && sawPeace && sawOpen, "expected point, frame (thumb+index L), peace and open poses");
         Assert.IsTrue(sawBoth, "expected both hands");
         Assert.IsTrue(sawRightMissing, "expected right hand to drop out");
         Assert.IsTrue(sawBye, "expected bye");

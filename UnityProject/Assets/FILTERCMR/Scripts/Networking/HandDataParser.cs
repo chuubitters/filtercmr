@@ -223,6 +223,7 @@ namespace FilterCMR.Networking
                 {
                     if (!ReadString(out int s, out int l)) return Fail("hand.pose: expected string");
                     h.pose = Eq(s, l, V_point) ? HandPose.Point
+                        : Eq(s, l, V_frame) ? HandPose.Frame          // "frame": thumb + index L shape
                         : Eq(s, l, V_peace) ? HandPose.Peace
                         : Eq(s, l, V_open) ? HandPose.Open
                         : Eq(s, l, V_fist) ? HandPose.Fist

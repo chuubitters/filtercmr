@@ -123,6 +123,18 @@ namespace FilterCMR.Tests
         }
 
         [Test]
+        public void ParsesFramePoseAndUnknownPoses()
+        {
+            string lm = Floats(63, 0.4f);
+            string json = "{\"type\":\"frame\",\"v\":1,\"hands\":[{\"id\":\"Left\",\"pose\":\"frame\",\"lm\":" + lm
+                + "},{\"id\":\"Right\",\"pose\":\"wave\",\"lm\":" + lm + "}]}";
+            var m = new TrackingMessage();
+            Assert.IsTrue(Parse(json, m));
+            Assert.AreEqual(HandPose.Frame, m.left.pose);
+            Assert.AreEqual(HandPose.Unknown, m.right.pose, "future pose names are tolerated");
+        }
+
+        [Test]
         public void ParsesNumberFormats()
         {
             string json = "{\"type\":\"frame\",\"v\":1,\"seq\":2147483647,\"t\":-1.5e3,\"trk\":{\"fps\":1E1,\"latency\":0.000125}}";

@@ -25,9 +25,9 @@ namespace FilterCMR.Mask
         static readonly Color32[] SourceColors =
         {
             new Color32(0x35, 0xDD, 0xF2, 0xFF), // left index
-            new Color32(0xA5, 0xF3, 0xFC, 0xFF), // left middle
+            new Color32(0xA5, 0xF3, 0xFC, 0xFF), // left thumb (or middle)
             new Color32(0x15, 0x5E, 0xEF, 0xFF), // right index
-            new Color32(0xF7, 0xFB, 0xFF, 0xFF), // right middle
+            new Color32(0xF7, 0xFB, 0xFF, 0xFF), // right thumb (or middle)
         };
 
         bool _drew;

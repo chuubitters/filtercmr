@@ -64,8 +64,10 @@ public static class SceneDump
         }
         if (doc.TryGetProperty("quad", out var q))
         {
-            Vector2 I(string n) => MaskCoordinateMapper.ImageToIso(V(q.GetProperty(n)), aspect);
-            QuadrilateralMaskGenerator.Generate(I("leftIndex"), I("leftMiddle"), I("rightIndex"), I("rightMiddle"), quad);
+            // Second corner per hand = thumb (default "L" frame) or middle finger; "leftMiddle" accepted for older scenes.
+            Vector2 I(string n, string alt = null) =>
+                MaskCoordinateMapper.ImageToIso(V(q.TryGetProperty(n, out var e) || alt == null ? q.GetProperty(n) : q.GetProperty(alt)), aspect);
+            QuadrilateralMaskGenerator.Generate(I("leftIndex"), I("leftSecond", "leftMiddle"), I("rightIndex"), I("rightSecond", "rightMiddle"), quad);
             qw = q.TryGetProperty("weight", out var w) ? w.GetSingle() : 1f;
         }
 

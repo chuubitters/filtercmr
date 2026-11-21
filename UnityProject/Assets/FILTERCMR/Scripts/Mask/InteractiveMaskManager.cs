@@ -6,7 +6,8 @@
 //   fingertips (HandView.Smoothed, IMAGE space)
 //      ─► ISO space (× image aspect) ─► PointSmoother (smoothing + jump limit)
 //      ─► RibbonMaskGenerator (index tips 8 + finger directions 6→8)
-//      ─► QuadrilateralMaskGenerator (index 8 + middle 12 of both hands, convex hull)
+//      ─► QuadrilateralMaskGenerator (index 8 + thumb 4 of both hands — or index 8 +
+//         middle 12 when Frame Fingers = Index And Middle — convex hull)
 //
 // WebcamCompositeController uploads the shapes + weights to the shader.
 // Nothing is allocated per frame; all shapes and smoothers are reused.
@@ -29,13 +30,13 @@ namespace FilterCMR.Mask
         [SerializeField] GestureManager gestures;
         [SerializeField] WebcamDisplay display;
         [SerializeField] VisualEffectController effects;
-        [Tooltip("Auto = gestures decide (point → ribbon, peace → quad). Ribbon/Quad = that mask whenever both hands are visible. Off = normal webcam.")]
+        [Tooltip("Auto = gestures decide (point → ribbon, L shapes (thumb + index) → quad). Ribbon/Quad = that mask whenever both hands are visible. Off = normal webcam.")]
         [SerializeField] MaskMode mode = MaskMode.Auto;
 
         readonly RibbonShape _ribbon = new RibbonShape();
         readonly QuadShape _quad = new QuadShape();
         MaskFader _ribbonFade, _quadFade;
-        PointSmoother _lIndex, _rIndex, _lMiddle, _rMiddle, _lDir, _rDir;
+        PointSmoother _lIndex, _rIndex, _lSecond, _rSecond, _lDir, _rDir;
         bool _pointsStale = true;
         float _lAppeared = -1f, _rAppeared = -1f;
         float _aspect = 16f / 9f;
@@ -103,8 +104,8 @@ namespace FilterCMR.Mask
                 RibbonMaskGenerator.Generate(_lIndex.Value, _rIndex.Value, Dir(_lDir), Dir(_rDir), _values.ribbon, Time.unscaledTime, _ribbon);
             else if (!_ribbonFade.Visible) _ribbon.Clear();
 
-            if (_quadFade.Visible && _lIndex.Initialised && _rIndex.Initialised && _lMiddle.Initialised && _rMiddle.Initialised)
-                QuadrilateralMaskGenerator.Generate(_lIndex.Value, _lMiddle.Value, _rIndex.Value, _rMiddle.Value, _quad);
+            if (_quadFade.Visible && _lIndex.Initialised && _rIndex.Initialised && _lSecond.Initialised && _rSecond.Initialised)
+                QuadrilateralMaskGenerator.Generate(_lIndex.Value, _lSecond.Value, _rIndex.Value, _rSecond.Value, _quad);
             else if (!_quadFade.Visible) _quad.Clear();
         }
 
@@ -119,6 +120,8 @@ namespace FilterCMR.Mask
         void UpdatePoints(HandView left, HandView right, float dt)
         {
             float rate = _values.pointSmoothing, speed = _values.maxPointSpeed;
+            // Second frame corner per hand: thumb tip (default, "L" shape) or middle tip (peace sign).
+            int second = gestures != null ? gestures.FrameSecondLandmark : HandLandmark.ThumbTip;
             bool snapL = _pointsStale || (left.Present && left.AppearedAt != _lAppeared);
             bool snapR = _pointsStale || (right.Present && right.AppearedAt != _rAppeared);
             _pointsStale = false;
@@ -128,7 +131,7 @@ namespace FilterCMR.Mask
             {
                 _lAppeared = left.AppearedAt;
                 Track(ref _lIndex, Iso(left, HandLandmark.IndexTip), snapL, dt, rate, speed);
-                Track(ref _lMiddle, Iso(left, HandLandmark.MiddleTip), snapL, dt, rate, speed);
+                Track(ref _lSecond, Iso(left, second), snapL, dt, rate, speed);
                 NVector2 d = MaskMath.SafeNormalize(Iso(left, HandLandmark.IndexTip) - Iso(left, HandLandmark.IndexPip), NVector2.Zero);
                 Track(ref _lDir, d, snapL, dt, rate, 0f);
             }
@@ -136,7 +139,7 @@ namespace FilterCMR.Mask
             {
                 _rAppeared = right.AppearedAt;
                 Track(ref _rIndex, Iso(right, HandLandmark.IndexTip), snapR, dt, rate, speed);
-                Track(ref _rMiddle, Iso(right, HandLandmark.MiddleTip), snapR, dt, rate, speed);
+                Track(ref _rSecond, Iso(right, second), snapR, dt, rate, speed);
                 NVector2 d = MaskMath.SafeNormalize(Iso(right, HandLandmark.IndexTip) - Iso(right, HandLandmark.IndexPip), NVector2.Zero);
                 Track(ref _rDir, d, snapR, dt, rate, 0f);
             }

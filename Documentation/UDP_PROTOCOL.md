@@ -39,7 +39,7 @@ The tracker is the only sender; Unity only listens. UDP is fire-and-forget: pack
       "state": "tracked",     // "tracked" (seen this frame) | "held" (briefly lost, last pose)
       "age": 0.0,             // ms since this hand was last actually detected
       "ext": [0,1,0,0,0],     // advisory finger extension: thumb,index,middle,ring,pinky
-      "pose": "point",        // advisory: "point" | "peace" | "open" | "fist" | "other"
+      "pose": "point",        // "point" (index only) | "frame" (thumb + index L) | "peace" | "open" | "fist" | "other"
       "lm": [x0,y0,z0, x1,y1,z1, … x20,y20,z20]   // 63 floats, 21 landmarks
     }
   ]
@@ -74,7 +74,7 @@ Index of landmark *i*, axis *a* (0=x, 1=y, 2=z) in `lm`: `i * 3 + a`.
 3. Ignore packets with an unknown `v` or malformed JSON; count them for the debug overlay.
 4. **Tracker timeout:** no packet for 1 s → "tracker offline". Any packet → back online.
 5. **Hand timeout:** a hand is present only while it appears in the latest packet. `held` hands may be drawn but should not start a new gesture.
-6. `pose` is the authoritative per-hand classification (made by Python). Unity combines the two hands' poses into the two-hand gestures and debounces them over time; it does not re-classify finger geometry. `ext` is informational.
+6. `pose` is the authoritative per-hand classification (made by Python). Unity combines the two hands' poses (point+point, frame+frame) into the two-hand gestures and debounces them over time; it does not re-classify finger geometry. `ext` is informational.
 
 ## Size
 
@@ -104,3 +104,7 @@ offset size  field
 ```
 
 Receiver rules: chunks may arrive in any order, and duplicates are ignored. A newer `frame_id` abandons an incomplete older frame, which is counted as dropped. A frame is only delivered when all `count` chunks have arrived. The reference implementations are `HandTracking/video_stream.py` and `Networking/VideoStreamCore.cs`.
+
+## Changelog
+
+* **Pose `frame` added** (still protocol v1): thumb + index extended, other fingers folded. Index-only with the thumb out is now `frame` rather than `point`. Receivers that don't know `frame` treat it as an unknown pose. The Unity parser in this repo supports it.

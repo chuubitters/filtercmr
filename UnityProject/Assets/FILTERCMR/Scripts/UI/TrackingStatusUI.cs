@@ -149,7 +149,9 @@ namespace FilterCMR.UI
             else if (trk.HandCount == 0) hint = "RAISE BOTH HANDS";
             else if (trk.HandCount == 1) hint = "RAISE YOUR OTHER HAND";
             else if (g != null && g.CurrentGesture == GestureType.None && m.Masks != null && m.Masks.Mode == MaskMode.Auto)
-                sub = "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  TWO PEACE SIGNS FOR A FRAME</color>";
+                sub = g.FrameFingers == FrameFingers.IndexAndMiddle
+                    ? "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  TWO PEACE SIGNS FOR A FRAME</color>"
+                    : "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  THUMB + INDEX \"L\" ON BOTH HANDS FOR A FRAME</color>";
 
             if (!videoOk && cam != null && cam.StatusMessage.Length > 0 && m.Settings.cameraSource != CameraSourceMode.PythonStream)
                 sub = (sub.Length > 0 ? sub + "\n" : "") + "<color=" + Palette.WarnTag + ">CAMERA: " + cam.StatusMessage + "</color>";

@@ -8,8 +8,18 @@ namespace FilterCMR.Gestures
         None = 0,
         /// <summary>Both hands report pose "point" (index finger only).</summary>
         TwoFingerPoint,
-        /// <summary>Both hands report pose "peace" (index + middle).</summary>
+        /// <summary>Both hands make the frame pose: "frame" (thumb + index L shape, default)
+        /// or "peace" (index + middle), see <see cref="FrameFingers"/>.</summary>
         TwoFingerFrame,
+    }
+
+    /// <summary>Which two fingers of each hand form the frame (and its four corners).</summary>
+    public enum FrameFingers
+    {
+        /// <summary>"L" shape: thumb tip (4) + index tip (8) of each hand. Python pose "frame".</summary>
+        IndexAndThumb = 0,
+        /// <summary>Peace sign: index tip (8) + middle tip (12) of each hand. Python pose "peace".</summary>
+        IndexAndMiddle = 1,
     }
 
     public enum GestureState

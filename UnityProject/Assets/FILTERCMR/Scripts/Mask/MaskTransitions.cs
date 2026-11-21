@@ -2,7 +2,7 @@
 //
 // Auto mode follows GestureManager: the ribbon is visible while TWO FINGER POINT
 // is active (including its release grace period), the quad while TWO FINGER
-// FRAME is active. Each mask has its own fader, so switching gestures is a
+// FRAME (both hands in an "L": thumb + index) is active. Each mask has its own fader, so switching gestures is a
 // cross-fade: the old mask is still fading out (fadeOut > release + confirm
 // time) when the new one starts fading in, and the image never flashes back to
 // the plain webcam in between.

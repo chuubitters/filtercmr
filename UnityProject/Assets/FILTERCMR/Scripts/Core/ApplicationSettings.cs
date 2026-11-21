@@ -64,6 +64,8 @@ namespace FilterCMR.Core
         [Min(0f)] public float displaySmoothing = 30f;
 
         [Header("Gestures")]
+        [Tooltip("Fingers that form the FRAME gesture and its four corners. Index + Thumb = an \"L\" with each hand (default). Index + Middle = peace signs.")]
+        public FilterCMR.Gestures.FrameFingers frameFingers = FilterCMR.Gestures.FrameFingers.IndexAndThumb;
         [Tooltip("Both hands must show the pose this long before the gesture activates.")]
         [Min(0f)] public float gestureConfirmSeconds = 0.2f;
         [Tooltip("Grace period before an active gesture ends after the pose is lost.")]

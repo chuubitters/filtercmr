@@ -1,6 +1,6 @@
 // FILTER CMR — draws the 21 landmarks of each hand as discs; fingertips as
-// larger rings. The index (and, for the frame gesture, middle) fingertips
-// get a white centre while a gesture is active.
+// larger rings. The fingertips used by the active gesture get a white centre:
+// index (ribbon), index + thumb (frame; index + middle in peace-sign mode).
 
 using FilterCMR.Gestures;
 using FilterCMR.Networking;
@@ -24,6 +24,7 @@ namespace FilterCMR.Tracking
         {
             var s = Settings;
             GestureType g = gestures != null ? gestures.CurrentGesture : GestureType.None;
+            int frameSecond = gestures != null ? gestures.FrameSecondLandmark : HandLandmark.ThumbTip;
             Color32 dark = Shadow;
             dark.a = (byte)(dark.a * color.a / 255f);
 
@@ -36,7 +37,7 @@ namespace FilterCMR.Tracking
                     AddDisc(vh, p, outer + 1.5f, dark);                       // contrast halo on bright video
                     AddRing(vh, p, outer, outer * 0.55f, color);
                     bool used = (g == GestureType.TwoFingerPoint && i == HandLandmark.IndexTip)
-                             || (g == GestureType.TwoFingerFrame && (i == HandLandmark.IndexTip || i == HandLandmark.MiddleTip));
+                             || (g == GestureType.TwoFingerFrame && (i == HandLandmark.IndexTip || i == frameSecond));
                     if (used) AddDisc(vh, p, outer * 0.45f, TipCore);
                 }
                 else

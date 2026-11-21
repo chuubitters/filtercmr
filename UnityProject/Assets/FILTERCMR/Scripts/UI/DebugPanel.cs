@@ -32,7 +32,7 @@ namespace FilterCMR.UI
             "WEBCAM", "VIDEO SOURCE", "PY TRACKER", "PY CAMERA", "UDP :{0}", "VIDEO :{0}",
             "", "LEFT HAND", "RIGHT HAND", "GESTURE", "CANDIDATE", "",
             "MASK MODE", "MASK", "HALFTONE", "EFFECTS", "SHADER", "",
-            "L INDEX TIP", "R INDEX TIP", "L MIDDLE TIP", "R MIDDLE TIP", "",
+            "L INDEX TIP", "R INDEX TIP", "L FRAME TIP 2", "R FRAME TIP 2", "",
             "RENDER FPS", "LAST MESSAGE", "LANDMARKS", "MASK DEBUG",
         };
 
@@ -245,8 +245,10 @@ namespace FilterCMR.UI
             // FINGERTIPS
             Tip(g, Handedness.Left, HandLandmark.IndexTip);
             Tip(g, Handedness.Right, HandLandmark.IndexTip);
-            Tip(g, Handedness.Left, HandLandmark.MiddleTip);
-            Tip(g, Handedness.Right, HandLandmark.MiddleTip);
+            int second = g != null ? g.FrameSecondLandmark : HandLandmark.ThumbTip;
+            string secondName = second == HandLandmark.ThumbTip ? "thumb  " : "middle  ";
+            _sb.Append(secondName); Tip(g, Handedness.Left, second);
+            _sb.Append(secondName); Tip(g, Handedness.Right, second);
             _sb.Append('\n');
 
             // FPS

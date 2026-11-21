@@ -74,10 +74,17 @@ def finger_extended(landmarks: np.ndarray, aspect: float = 16 / 9) -> list[bool]
 
 
 def classify_pose(ext: list[bool]) -> str:
-    """Coarse single-hand pose name from extension flags (thumb ignored)."""
-    _, index, middle, ring, pinky = ext
+    """Coarse single-hand pose name from extension flags.
+
+    point : index only (thumb folded)
+    frame : thumb + index, others folded ("L" shape, a camera-frame corner)
+    peace : index + middle (thumb ignored)
+    open  : all four long fingers
+    fist  : no long finger
+    """
+    thumb, index, middle, ring, pinky = ext
     if index and not middle and not ring and not pinky:
-        return "point"
+        return "frame" if thumb else "point"
     if index and middle and not ring and not pinky:
         return "peace"
     if index and middle and ring and pinky:

@@ -1,7 +1,8 @@
 // FILTER CMR — builds the TWO FINGER FRAME polygon from four fingertips. Pure C#.
 //
 // Robust ordering
-//   The four tips (left index, left middle, right index, right middle) arrive in
+//   The four tips (left index, left thumb, right index, right thumb — or the
+//   middle tips in peace-sign mode) arrive in
 //   no particular geometric order and can cross each other as hands rotate.
 //   Connecting them in input order can self-intersect ("bow-tie"). Instead we
 //   take their CONVEX HULL (Andrew's monotone chain): the result is always a
@@ -28,13 +29,13 @@ namespace FilterCMR.Mask
         static readonly int[] s_idx = new int[4];
         static readonly int[] s_hull = new int[8];
 
-        /// <param name="tips">Four tips in identity order (ISO): L index, L middle, R index, R middle.</param>
-        public static void Generate(Vector2 leftIndex, Vector2 leftMiddle, Vector2 rightIndex, Vector2 rightMiddle, QuadShape q)
+        /// <summary>Four tips in identity order (ISO): left index, left second (thumb or middle), right index, right second.</summary>
+        public static void Generate(Vector2 leftIndex, Vector2 leftSecond, Vector2 rightIndex, Vector2 rightSecond, QuadShape q)
         {
             q.Sources[0] = leftIndex;
-            q.Sources[1] = leftMiddle;
+            q.Sources[1] = leftSecond;
             q.Sources[2] = rightIndex;
-            q.Sources[3] = rightMiddle;
+            q.Sources[3] = rightSecond;
 
             int h = ConvexHull(q.Sources, s_hull);
             q.HasHomography = false;

@@ -23,10 +23,28 @@ namespace FilterCMR.Tests
         public void ClassifyCombinesPythonPoses()
         {
             Assert.AreEqual(GestureType.TwoFingerPoint, GestureStateMachine.Classify(D, HandPose.Point, D, HandPose.Point));
-            Assert.AreEqual(GestureType.TwoFingerFrame, GestureStateMachine.Classify(D, HandPose.Peace, H, HandPose.Peace));
-            Assert.AreEqual(GestureType.None, GestureStateMachine.Classify(D, HandPose.Point, D, HandPose.Peace));
+            Assert.AreEqual(GestureType.TwoFingerFrame, GestureStateMachine.Classify(D, HandPose.Frame, H, HandPose.Frame));
+            Assert.AreEqual(GestureType.None, GestureStateMachine.Classify(D, HandPose.Point, D, HandPose.Frame));
             Assert.AreEqual(GestureType.None, GestureStateMachine.Classify(D, HandPose.Point, L, HandPose.Point));
             Assert.AreEqual(GestureType.None, GestureStateMachine.Classify(D, HandPose.Open, D, HandPose.Open));
+        }
+
+        [Test]
+        public void FrameIsThumbIndexLShapeByDefaultAndPeaceOnlyWhenConfigured()
+        {
+            Assert.AreEqual(GestureType.TwoFingerFrame, GestureStateMachine.Classify(D, HandPose.Frame, D, HandPose.Frame));
+            Assert.AreEqual(GestureType.None, GestureStateMachine.Classify(D, HandPose.Peace, D, HandPose.Peace), "peace no longer frames by default");
+            Assert.AreEqual(GestureType.TwoFingerFrame,
+                GestureStateMachine.Classify(D, HandPose.Peace, D, HandPose.Peace, FrameFingers.IndexAndMiddle));
+            Assert.AreEqual(GestureType.None,
+                GestureStateMachine.Classify(D, HandPose.Frame, D, HandPose.Frame, FrameFingers.IndexAndMiddle));
+            Assert.AreEqual(GestureType.TwoFingerPoint, GestureStateMachine.Classify(D, HandPose.Point, D, HandPose.Point, FrameFingers.IndexAndMiddle));
+            Assert.AreEqual(HandLandmark.ThumbTip, GestureStateMachine.FrameSecondTip(FrameFingers.IndexAndThumb));
+            Assert.AreEqual(HandLandmark.MiddleTip, GestureStateMachine.FrameSecondTip(FrameFingers.IndexAndMiddle));
+
+            var m = new GestureStateMachine { FrameFingers = FrameFingers.IndexAndMiddle };
+            Run(m, 0.3f, D, HandPose.Peace, D, HandPose.Peace);
+            Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
         }
 
         [Test]
@@ -47,10 +65,10 @@ namespace FilterCMR.Tests
         public void FlickerDuringConfirmResets()
         {
             var m = Make();
-            Run(m, 0.15f, D, HandPose.Peace, D, HandPose.Peace);
-            m.Update(D, HandPose.Other, D, HandPose.Peace, Dt);
+            Run(m, 0.15f, D, HandPose.Frame, D, HandPose.Frame);
+            m.Update(D, HandPose.Other, D, HandPose.Frame, Dt);
             Assert.AreEqual(GestureState.Idle, m.State);
-            Run(m, 0.15f, D, HandPose.Peace, D, HandPose.Peace);
+            Run(m, 0.15f, D, HandPose.Frame, D, HandPose.Frame);
             Assert.AreEqual(GestureState.Confirming, m.State, "timer must restart after the flicker");
         }
 
@@ -58,12 +76,12 @@ namespace FilterCMR.Tests
         public void BriefDropoutDoesNotBreakActiveGesture()
         {
             var m = Make();
-            Run(m, 0.3f, D, HandPose.Peace, D, HandPose.Peace);
+            Run(m, 0.3f, D, HandPose.Frame, D, HandPose.Frame);
             Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
-            Run(m, 0.1f, D, HandPose.Peace, L, HandPose.Unknown); // right hand lost for 100 ms
+            Run(m, 0.1f, D, HandPose.Frame, L, HandPose.Unknown); // right hand lost for 100 ms
             Assert.AreEqual(GestureState.Releasing, m.State);
             Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
-            Run(m, 0.05f, D, HandPose.Peace, D, HandPose.Peace);
+            Run(m, 0.05f, D, HandPose.Frame, D, HandPose.Frame);
             Assert.AreEqual(GestureState.Active, m.State);
         }
 
@@ -80,14 +98,14 @@ namespace FilterCMR.Tests
         }
 
         [Test]
-        public void SwitchingPointToPeaceGoesThroughReleaseThenConfirm()
+        public void SwitchingPointToFrameGoesThroughReleaseThenConfirm()
         {
             var m = Make();
             Run(m, 0.3f, D, HandPose.Point, D, HandPose.Point);
-            Run(m, 0.3f, D, HandPose.Peace, D, HandPose.Peace);
+            Run(m, 0.3f, D, HandPose.Frame, D, HandPose.Frame);
             Assert.AreEqual(GestureState.Confirming, m.State);
             Assert.AreEqual(GestureType.TwoFingerFrame, m.Tracked);
-            Run(m, 0.25f, D, HandPose.Peace, D, HandPose.Peace);
+            Run(m, 0.25f, D, HandPose.Frame, D, HandPose.Frame);
             Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
         }
 
@@ -118,9 +136,9 @@ namespace FilterCMR.Tests
         public void ZeroConfirmTimeActivatesImmediately()
         {
             var m = new GestureStateMachine { ConfirmSeconds = 0f, ReleaseSeconds = 0f };
-            Assert.IsTrue(m.Update(D, HandPose.Peace, D, HandPose.Peace, Dt));
+            Assert.IsTrue(m.Update(D, HandPose.Frame, D, HandPose.Frame, Dt));
             Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
-            Assert.IsTrue(m.Update(D, HandPose.Fist, D, HandPose.Peace, Dt));
+            Assert.IsTrue(m.Update(D, HandPose.Fist, D, HandPose.Frame, Dt));
             Assert.AreEqual(GestureType.None, m.Current);
         }
     }

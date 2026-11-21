@@ -2,7 +2,7 @@
 
 What you get: the live webcam stays normal until you gesture. Then:
 * **Both index fingers (point)** → a flowing **ribbon** between the fingertips.
-* **Two peace signs** → a **frame** spanning the four fingertips.
+* **Thumb + index "L" on both hands** (like framing a photo) → a **frame** spanning the four fingertips: both thumb tips and both index tips.
 
 Inside the shape the webcam turns into a blue/cyan halftone print with grain, a subtle glitch and RGB split. Everything outside stays untouched.
 
@@ -53,7 +53,7 @@ Press **Play** in Unity, then raise both hands:
 | Do | See |
 |---|---|
 | Both hands, index fingers up, other fingers folded, hold ~0.2 s | **TWO FINGER POINT**: the ribbon appears between the index tips and follows them |
-| Two peace signs | **TWO FINGER FRAME**: the halftone frame through the four fingertips |
+| Both hands in an "L": thumb and index out, other fingers folded | **TWO FINGER FRAME**: the halftone frame through both thumb tips and both index tips |
 | Switch between the two | Smooth cross-fade, no flash |
 | Drop your hands | The mask fades out (≤ 0.25 s grace + 0.5 s fade) and the normal webcam returns |
 
@@ -66,7 +66,7 @@ All the Milestone 2 keys still work: **D** debug panel, **R** restart UDP, **H**
 | **1** | Ribbon mode: the ribbon whenever both hands are visible, any pose. Press again for AUTO |
 | **2** | Quad mode: the frame whenever both hands are visible, any pose. Press again for AUTO |
 | **0** | Mask off (plain webcam). Press again for AUTO |
-| *(default)* | **AUTO**: gestures decide (point → ribbon, peace → quad) |
+| *(default)* | **AUTO**: gestures decide (point → ribbon, thumb + index "L" → quad) |
 | **T** | Halftone on/off |
 | **G** | Grain on/off |
 | **X** | Glitch on/off |
@@ -83,6 +83,12 @@ All the Milestone 2 keys still work: **D** debug panel, **R** restart UDP, **H**
 * **Everything:** select **FILTER CMR / Systems / Visual Effects** in the Hierarchy. Every parameter has a tooltip; see [SHADER_PARAMETERS.md](SHADER_PARAMETERS.md).
 * **Colours:** set **Palette** for a preset, or edit *Foreground* (dot ink), *Background Tint* (paper) and the six tone-ramp colours.
 * **Keeping changes:** values changed in Play Mode revert when you stop. To keep them, right-click the component → **Copy Component**, stop Play, then **Paste Component Values**. Or edit outside Play Mode.
+
+### Frame fingers
+
+The frame uses **thumb + index** by default. To go back to peace signs (index + middle), select `Assets/FILTERCMR/Settings/FilterCMRSettings.asset` and set **Gestures → Frame Fingers = Index And Middle**. The gesture and the corners switch together.
+
+For the ribbon, keep your thumb **folded**: index-only is `point`, while thumb + index is the frame's `L`.
 
 ## 6. Checking alignment
 
@@ -101,6 +107,8 @@ If everything is mirrored relative to your hands, press **M** (see the Milestone
 | Plain webcam only; the debug panel's SHADER row shows an error | Select the shader asset and fix the errors shown, or report them. Then run Setup Visual Effects again |
 | Gesture shows in the debug panel but nothing appears | Check that MASK MODE isn't OFF (press **0** to toggle) and that `Opacity` and `Halftone Intensity` aren't 0 |
 | The mask appears offset from your fingers | Press **V** and compare the markers with your fingertips. A constant offset means an aspect mismatch (the debug panel warns about it; see Milestone 2) |
+| Ribbon becomes a frame (or flickers between them) | Your thumb is out: the tracker reads thumb + index as the frame's L. Tuck the thumb for the ribbon |
+| L shape not recognised | Spread the thumb clearly sideways from the index finger and keep the other three fingers folded. Watch the tracker preview: it should show `[TI...] frame` |
 | Ribbon flickers in and out | Hold the pose steadier, or raise **Fade Out**. Forced mode **1** ignores the pose |
 | Faces too hard to recognise inside the mask | Lower **Dot Spacing** (finer dots), lower **Contrast**, raise **Tone Mix**, or lower **Halftone Intensity** (**[**) |
 | Too much distortion | **X** (glitch off), or lower *Glitch Intensity* / *RGB Split* in the settings panel |

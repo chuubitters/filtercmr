@@ -154,7 +154,7 @@ namespace FilterCMR.Rendering
         [Header("Tracking & transitions")]
         [Tooltip("Seconds for a mask to fade in.")]
         [Range(0f, 2f)] public float fadeIn = D.fadeInSeconds;
-        [Tooltip("Seconds for a mask to fade out. Keep it > 0.45 s for flash-free point ↔ peace switching.")]
+        [Tooltip("Seconds for a mask to fade out. Keep it > 0.45 s for flash-free point ↔ frame switching.")]
         [Range(0f, 3f)] public float fadeOut = D.fadeOutSeconds;
         [Tooltip("Smoothing of the mask control points (1/s). Lower = smoother but laggier. 0 = off.")]
         [Range(0f, 60f)] public float smoothing = D.pointSmoothing;

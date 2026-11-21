@@ -18,8 +18,9 @@ namespace FilterCMR.Networking
     /// <summary>"hands[].state".</summary>
     public enum HandState { Tracked = 0, Held }
 
-    /// <summary>"hands[].pose" — per-hand classification made by Python (finger_state.classify_pose).</summary>
-    public enum HandPose { Unknown = 0, Point, Peace, Open, Fist, Other }
+    /// <summary>"hands[].pose" — per-hand classification made by Python (finger_state.classify_pose).
+    /// Point = index only (thumb folded); Frame = thumb + index ("L"); Peace = index + middle.</summary>
+    public enum HandPose { Unknown = 0, Point, Peace, Open, Fist, Other, Frame }
 
     /// <summary>"cam.status".</summary>
     public enum CameraStatus { Unknown = 0, Starting, Ok, Reconnecting, Error, Stopped }

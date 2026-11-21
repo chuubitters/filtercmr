@@ -14,7 +14,7 @@ namespace FilterCMR.Mask
         Auto = 0,
         /// <summary>Ribbon between the index tips whenever both hands are visible (any pose).</summary>
         Ribbon,
-        /// <summary>Quad from the four tips whenever both hands are visible (any pose).</summary>
+        /// <summary>Quad from the four frame tips (thumb + index by default) whenever both hands are visible (any pose).</summary>
         Quad,
         /// <summary>No mask: normal webcam.</summary>
         Off,
@@ -52,7 +52,7 @@ namespace FilterCMR.Mask
     /// <summary>Convex quadrilateral (or triangle) through the four fingertips.</summary>
     public sealed class QuadShape
     {
-        /// <summary>Inputs in identity order: 0 = left index, 1 = left middle, 2 = right index, 3 = right middle.</summary>
+        /// <summary>Inputs in identity order: 0 = left index, 1 = left thumb (or middle), 2 = right index, 3 = right thumb (or middle).</summary>
         public readonly Vector2[] Sources = new Vector2[4];
         /// <summary>Polygon vertices in consistent winding (positive signed area in ISO, y down = clockwise on screen).
         /// When the hull is a triangle, vertex 3 repeats vertex 2 so consumers can always read four.</summary>

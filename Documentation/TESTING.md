@@ -17,7 +17,7 @@ python tools/check_setup.py        # environment: packages, model, MediaPipe, we
 | Left/Right identity | `test_detector.py` | label swap, duplicate labels resolved by screen side (mirrored and not) |
 | Tracking loss & recovery | `test_detector.py` | held → dropped after timeout, clean restart, MediaPipe auto-restart after 5 errors, model failure reported not raised |
 | Tracking resolution | `test_detector.py` | downscale to `tracking_width`, never upscale |
-| Finger states | `test_finger_state.py` | point / peace / open / fist at 7 rotations and 3 scales |
+| Finger states | `test_finger_state.py` | point / frame (thumb + index L) / peace / open / fist at 7 rotations and 3 scales |
 | UDP packets | `test_udp_and_config.py` | schema, size < 1500 B, clamping, NaN rejected, loopback round-trip, no listener = no crash |
 | Main loop | `test_main_loop.py` | fake camera + mocked MediaPipe → real UDP: frame packets, ordering, mirroring, `bye` |
 | CLI config | `test_udp_and_config.py` | flags and validation |
@@ -41,6 +41,7 @@ Run the tracker with the preview: `./run.sh`. In a second terminal run `python t
 | M1-6 🖐 | Two hands | Raise both hands | `hands=2`, one `L`, one `R`, never two of the same |
 | M1-7 🖐 | Index-only pose | Both hands: index up, others folded | Both labels show `[.I...] point` |
 | M1-8 🖐 | Two-finger pose | Both hands: index + middle up (peace sign) | `[.IM..] peace` on both |
+| M1-8b 🖐 | L pose (frame) | Both hands: thumb + index out, others folded | `[TI...] frame` on both |
 | M1-9 🖐 | Normalisation | Put your index tip in each screen corner | Coordinates read about `0.0,0.0` top-left and `1.0,1.0` bottom-right, never outside 0–1 |
 | M1-10 🖐 | Smoothing | Hold still, press **S** to toggle | With smoothing on, points jitter visibly less; fast moves still follow closely |
 | M1-11 🖐 | Hand loss | Drop one hand quickly out of view | Briefly `HELD` (amber), then it disappears; no crash |

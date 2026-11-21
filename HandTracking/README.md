@@ -14,7 +14,7 @@ python tools/udp_monitor.py   # see what Unity receives (in a second terminal, v
 | `camera.py` | threaded capture (AVFoundation on macOS), newest-frame-wins, auto-reconnect |
 | `hand_detector.py` | MediaPipe wrapper, mirroring, Left/Right resolution, smoothing, hold/drop, auto-restart |
 | `one_euro.py` | vectorised One Euro Filter |
-| `finger_state.py` | advisory finger-extension and pose hint (point / peace / open / fist) |
+| `finger_state.py` | advisory finger-extension and pose (point / frame L / peace / open / fist) |
 | `udp_sender.py` | packet encoding and non-blocking UDP send |
 | `debug_view.py` | OpenCV preview overlay |
 | `config.py` | every option and its CLI flag |

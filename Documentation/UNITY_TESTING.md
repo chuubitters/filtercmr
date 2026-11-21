@@ -28,7 +28,7 @@ The end-to-end tests check:
 
 ```bash
 cd HandTracking && source .venv/bin/activate
-python tools/fake_tracker.py --stream-video        # both hands, pose cycles point → peace → open every 4 s
+python tools/fake_tracker.py --stream-video        # both hands, pose cycles point → frame → peace → open every 4 s
 # Unity: Camera Source = Python Stream (or Auto), press Play
 ```
 
@@ -57,7 +57,7 @@ Please note the result in an issue; it decides the default for later milestones.
 | 4 | One hand → 21 landmarks | Raise only your **right** hand | One skeleton (electric blue): 21 dots, 5 larger fingertip rings, connections incl. palm 5-9-13-17-5. RIGHT HAND **DETECTED**, LEFT **LOST**. Hint: RAISE YOUR OTHER HAND | ☐ |
 | 5 | Two hands | Raise both hands | Two skeletons: left cyan, right blue. Both DETECTED. Never two of the same side | ☐ |
 | 6 | Point gesture | Both hands: index up, others folded; hold ~0.2 s | Both hands `pose point`; GESTURE **TWO FINGER POINT · ACTIVE**; label ◆ TWO FINGER POINT at the top; index tips get white centres; L/R INDEX TIP show coordinates | ☐ |
-| 7 | Peace gesture | Both hands: index + middle up | **TWO FINGER FRAME · ACTIVE**; index and middle tips highlighted; L/R MIDDLE TIP show coordinates | ☐ |
+| 7 | Frame gesture | Both hands: thumb + index out ("L"), others folded (since M3/4; peace signs if *Frame Fingers = Index And Middle*) | **TWO FINGER FRAME · ACTIVE**; index and thumb tips highlighted; L/R FRAME TIP 2 show coordinates | ☐ |
 | 8 | Landmarks follow | Move both hands around the whole frame, including the corners | Overlay stays on your hands with no visible lag or jitter. Moving your right hand to your right moves the blue skeleton right on screen (mirror view). Fingertip coordinates go from ~0 to ~1 | ☐ |
 | 9 | Hand disappears | Drop one hand out of view | Its skeleton fades (held) then vanishes within ~0.2 s. The gesture ends after ≤ 0.25 s. The other hand is unaffected | ☐ |
 | 10 | Tracker stopped | Press Q in the tracker preview (or Ctrl+C) | Within ~0.1 s (bye): PY TRACKER **STOPPED (bye)**, hint TRACKER STOPPED, skeletons gone, no errors in the Console. Kill it hard (`kill -9`) to test the timeout: **DISCONNECTED** after ~1 s | ☐ |

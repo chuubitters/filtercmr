@@ -4,7 +4,7 @@ Uses the real packet encoder (udp_sender.build_packet), so Unity receives
 exactly what the real tracker sends. Useful for testing the Unity side
 without a webcam, or before MediaPipe is set up.
 
-    python tools/fake_tracker.py                     # both hands, pose cycles point -> peace -> open
+    python tools/fake_tracker.py                     # both hands, pose cycles point -> frame -> peace -> open
     python tools/fake_tracker.py --pose point
     python tools/fake_tracker.py --hands left --pose peace
     python tools/fake_tracker.py --drop-every 4      # hide the right hand for 1 s every 4 s
@@ -37,10 +37,11 @@ from video_stream import VideoStreamer  # noqa: E402
 POSES = {
     "point": (False, True, False, False, False),
     "peace": (False, True, True, False, False),
+    "frame": (True, True, False, False, False),   # L shape: thumb + index
     "open": (True, True, True, True, True),
     "fist": (False, False, False, False, False),
 }
-CYCLE = ("point", "peace", "open")
+CYCLE = ("point", "frame", "peace", "open")
 
 
 def pose_at(args, t: float) -> str:

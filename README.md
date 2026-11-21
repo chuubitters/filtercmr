@@ -1,6 +1,6 @@
 # FILTER CMR
 
-A real-time interactive camera artwork for macOS. Raise your hands in front of the webcam and draw a blue, cyan and navy halftone filter into the live image: a **ribbon** between two index fingers, or a **four-point frame** between two peace signs. Outside the shape, the camera image stays untouched.
+A real-time interactive camera artwork for macOS. Raise your hands in front of the webcam and draw a blue, cyan and navy halftone filter into the live image: a **ribbon** between two index fingers, or a **four-point frame** between your thumbs and index fingers (an "L" with each hand, like framing a photo). Outside the shape, the camera image stays untouched.
 
 The visual language is an original take on Y2K music-editorial print: halftone dots, photocopy grain, RGB split and digital glitch. It uses no third-party logos or artwork.
 
@@ -10,7 +10,7 @@ The visual language is an original take on Y2K music-editorial print: halftone d
 |---|---|---|
 | 1 | Repository structure, Python webcam hand tracking | ✅ done |
 | 2 | Unity integration: UDP receiver, webcam display, live landmarks, gesture recognition, debug UI, scene setup tool | ✅ tested by you on a Mac |
-| **3 + 4** | **Interactive masks** (point → ribbon, peace → quad) **+ halftone composite shader** (blue/cyan print, RGB split, glitch, grain, edge glow), settings panel, presentation mode | ✅ code complete and verified outside Unity: C# 64 tests, shader compiled and **executed** with 36 numeric checks, compile check against 136 Unity 2022.3.62f1 APIs. 🖐 **Needs a first run on your Mac:** [MILESTONE_3_4_TESTING.md](Documentation/MILESTONE_3_4_TESTING.md) |
+| **3 + 4** | **Interactive masks** (point → ribbon, thumb + index "L" → quad) **+ halftone composite shader** (blue/cyan print, RGB split, glitch, grain, edge glow), settings panel, presentation mode | ✅ code complete and verified outside Unity: C# 64 tests, shader compiled and **executed** with 36 numeric checks, compile check against 136 Unity 2022.3.62f1 APIs. 🖐 **Needs a first run on your Mac:** [MILESTONE_3_4_TESTING.md](Documentation/MILESTONE_3_4_TESTING.md) |
 | 5 | (merged into 3 + 4) | |
 | 6 | UI, calibration, reset, fullscreen, performance | ⏳ |
 | 7 | End-to-end testing, final docs | ⏳ |
@@ -19,7 +19,7 @@ The visual language is an original take on Y2K music-editorial print: halftone d
 
 * **No gesture:** the webcam image, untouched.
 * **Both index fingers up (point):** an organic ribbon of blue halftone flows between your index fingertips and follows them.
-* **Two peace signs:** a halftone frame spans the four fingertips. It stretches, rotates and skews with your hands, and its dots follow the frame's perspective.
+* **Thumb + index "L" on both hands** (like framing a photo): a halftone frame spans the four fingertips (both thumb tips and both index tips). It stretches, rotates and skews with your hands, and its dots follow the frame's perspective.
 * Inside the shape the image becomes an editorial blue/cyan print: luminance-driven dots (circle, square, soft or irregular) over a tonal blue ramp, with fine grain, subtle RGB split and controlled glitch bands. The edge is soft, with a faint cyan glow. Outside, every pixel is the original webcam image.
 * Switching gestures cross-fades; dropping your hands fades back to the plain webcam.
 
@@ -29,12 +29,12 @@ The visual language is an original take on Y2K music-editorial print: halftone d
  webcam ─► Python tracker (HandTracking/) ──UDP JSON :5065──► Unity 2022.3 (UnityProject/)
            MediaPipe 21 landmarks × 2 hands                   background thread: socket + parser
            One Euro smoothing, Left/Right,                    main thread: hands, gestures,
-           per-hand pose: point / peace / …                   webcam display, landmark overlay, UI
+           per-hand pose: point / frame / …                   webcam display, landmark overlay, UI
                       └──(optional --stream-video) JPEG :5066 ──► camera fallback
 ```
 
 * **Python** owns tracking and per-hand classification (`pose`).
-* **Unity** owns display, the two-hand gesture interpretation (both `point` → TWO FINGER POINT, both `peace` → TWO FINGER FRAME, with hold and release timers) and all rendering.
+* **Unity** owns display, the two-hand gesture interpretation (both `point` → TWO FINGER POINT, both `frame` (thumb + index "L") → TWO FINGER FRAME, with hold and release timers) and all rendering.
 * The masks are **signed-distance fields** evaluated in one custom uGUI shader on the existing webcam `RawImage` (Built-in render pipeline), so there are no render textures and no extra draw calls. See [ARCHITECTURE.md](Documentation/ARCHITECTURE.md#interactive-masks-and-the-halftone-composite-milestones-3-and-4).
 * Unity shows the camera with its own `WebCamTexture`. If your Mac won't let both apps use the camera, the tracker can forward its frames instead (`--stream-video`).
 
@@ -62,7 +62,7 @@ cd filtercmr/HandTracking
 2. On first open, accept **Create Main Scene**, or use the menu **FILTER CMR → Setup Main Scene**.
 3. Run **FILTER CMR → Setup Visual Effects** (adds the mask and halftone systems to your existing scene).
 4. Open `Assets/FILTERCMR/Scenes/MainScene.unity` → **Play** → allow camera access for Unity.
-5. Index fingers up on both hands → **ribbon**. Two peace signs → **frame**.
+5. Index fingers up on both hands → **ribbon**. Thumb + index "L" on both hands → **frame**. (Prefer peace signs? Set **Frame Fingers = Index And Middle** in `FilterCMRSettings`.)
 
 Shortcuts in the Game view:
 * **D** debug panel · **R** restart UDP · **H** landmarks · **C** next camera · **M** flip video

@@ -241,7 +241,7 @@ def main(argv=None) -> int:
     cv2.imwrite(str(args.out / "00_input.png"), cv2.cvtColor(img, cv2.COLOR_RGB2BGR))
     base = {"aspect": ASPECT, "imageHeightPx": H, "time": 1.25}
     ribbon = {"a": [0.30, 0.62], "b": [0.71, 0.50], "dirA": [0.1, -1], "dirB": [-0.15, -1]}
-    quad = {"leftIndex": [0.30, 0.30], "leftMiddle": [0.27, 0.72], "rightIndex": [0.70, 0.24], "rightMiddle": [0.74, 0.70]}
+    quad = {"leftIndex": [0.30, 0.30], "leftSecond": [0.27, 0.72], "rightIndex": [0.70, 0.24], "rightSecond": [0.74, 0.70]}
 
     for space, defines in (("gamma", ("UNITY_COLORSPACE_GAMMA",)), ("linear", ())):
         rend = Renderer(*compiled[defines], linear=(space == "linear"))
@@ -314,7 +314,7 @@ def main(argv=None) -> int:
     # 7. dot spacing follows the parameter (autocorrelation period of the dot pattern)
     def period(spacing: float) -> float:
         fx = {**quiet, "halftoneEnabled": True, "dotSpacingPx": spacing, "gridAngleDeg": 0.0, "perspectiveDots": False, "toneMix": 0.0}
-        sq = {"leftIndex": [0.25, 0.2], "leftMiddle": [0.25, 0.85], "rightIndex": [0.75, 0.2], "rightMiddle": [0.75, 0.85]}
+        sq = {"leftIndex": [0.25, 0.2], "leftSecond": [0.25, 0.85], "rightIndex": [0.75, 0.2], "rightSecond": [0.75, 0.85]}
         o = rend.render(np.full_like(img, 170), scene_uniforms({**base, "quad": sq, "effects": fx}))
         ac = 0
         for y in range(H // 2 - 60, H // 2 + 60):          # sum row autocorrelations: robust to row phase
@@ -331,7 +331,7 @@ def main(argv=None) -> int:
 
     # 8. darker image -> bigger ink dots (print style)
     fx = {**quiet, "halftoneEnabled": True, "toneMix": 0.0, "perspectiveDots": False}
-    sq = {"leftIndex": [0.0, 0.0], "leftMiddle": [0.0, 1.0], "rightIndex": [1.0, 0.0], "rightMiddle": [1.0, 1.0]}
+    sq = {"leftIndex": [0.0, 0.0], "leftSecond": [0.0, 1.0], "rightIndex": [1.0, 0.0], "rightSecond": [1.0, 1.0]}
     coverage = []
     for level in (40, 128, 215):
         o = rend.render(np.full_like(img, level), scene_uniforms({**base, "quad": sq, "effects": fx}))

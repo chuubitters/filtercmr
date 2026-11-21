@@ -327,7 +327,7 @@ namespace FilterCMR.Tests
         }
 
         [Test]
-        public void PointToPeaceCrossFadesWithoutFlash()
+        public void PointToFrameCrossFadesWithoutFlash()
         {
             // Full pipeline: Python poses -> gesture state machine -> mask targets -> faders (default timings).
             var g = new GestureStateMachine { ConfirmSeconds = 0.2f, ReleaseSeconds = 0.25f };
@@ -336,9 +336,9 @@ namespace FilterCMR.Tests
             const float dt = 1f / 60f;
             float minCombinedAfterShown = 1f;
             bool shown = false;
-            for (int frame = 0; frame < 180; frame++) // 3 s: 1 s point, then peace
+            for (int frame = 0; frame < 180; frame++) // 3 s: 1 s point, then thumb + index L shapes
             {
-                HandPose pose = frame < 60 ? HandPose.Point : HandPose.Peace;
+                HandPose pose = frame < 60 ? HandPose.Point : HandPose.Frame;
                 g.Update(HandStatus.Detected, pose, HandStatus.Detected, pose, dt);
                 MaskTransitions.Targets(MaskMode.Auto, g.Current, true, out float rt, out float qt);
                 ribbon.Update(rt, dt, 0.25f, 0.5f);

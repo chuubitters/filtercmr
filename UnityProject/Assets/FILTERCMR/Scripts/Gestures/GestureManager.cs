@@ -48,6 +48,13 @@ namespace FilterCMR.Gestures
         public Vector2 RightIndexTip => Tip(Handedness.Right, HandLandmark.IndexTip);
         public Vector2 LeftMiddleTip => Tip(Handedness.Left, HandLandmark.MiddleTip);
         public Vector2 RightMiddleTip => Tip(Handedness.Right, HandLandmark.MiddleTip);
+        public Vector2 LeftThumbTip => Tip(Handedness.Left, HandLandmark.ThumbTip);
+        public Vector2 RightThumbTip => Tip(Handedness.Right, HandLandmark.ThumbTip);
+
+        /// <summary>Fingers forming the frame gesture (from the settings asset).</summary>
+        public FrameFingers FrameFingers => Settings.frameFingers;
+        /// <summary>Landmark of the frame's second corner per hand: thumb tip (4) or middle tip (12).</summary>
+        public int FrameSecondLandmark => GestureStateMachine.FrameSecondTip(Settings.frameFingers);
 
         /// <summary>Fired when <see cref="CurrentGesture"/> changes: (previous, current).</summary>
         public event System.Action<GestureType, GestureType> GestureChanged;
@@ -70,6 +77,7 @@ namespace FilterCMR.Gestures
             var s = Settings;
             _machine.ConfirmSeconds = s.gestureConfirmSeconds;
             _machine.ReleaseSeconds = s.gestureReleaseSeconds;
+            _machine.FrameFingers = s.frameFingers;
             GestureType before = _machine.Current;
             if (_machine.Update(LeftStatus, LeftPose, RightStatus, RightPose, Time.unscaledDeltaTime))
             {
@@ -102,6 +110,7 @@ namespace FilterCMR.Gestures
             {
                 case HandPose.Point: return "point";
                 case HandPose.Peace: return "peace";
+                case HandPose.Frame: return "frame";
                 case HandPose.Open: return "open";
                 case HandPose.Fist: return "fist";
                 case HandPose.Other: return "other";
