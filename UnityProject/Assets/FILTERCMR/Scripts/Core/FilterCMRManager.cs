@@ -6,7 +6,8 @@
 //   M  flip video horizontally (alignment aid)
 //   1  ribbon mask mode             2  quad mask mode         0  mask off
 //      (pressing the active mode key again returns to AUTO = gesture-driven)
-//   T  halftone on/off              G  grain on/off           X  glitch on/off
+//   T  halftone on/off (also: pinch thumb + index tips together)
+//   G  grain on/off                 X  glitch on/off
 //   [  ]  halftone intensity −/+    V  mask debug view        S  settings panel
 //   P  presentation mode (hide all panels; P or the corner dot to leave)
 // All shortcuts are handled here only (one input listener).
@@ -118,6 +119,24 @@ namespace FilterCMR
                 presentationExit.onClick.AddListener(() => SetPresentation(false));
             }
             if (s.startInPresentationMode) SetPresentation(true);
+            if (gestures != null) gestures.PinchToggled += OnPinchToggle;
+        }
+
+        void OnDestroy()
+        {
+            if (gestures != null) gestures.PinchToggled -= OnPinchToggle;
+        }
+
+        /// <summary>Time.unscaledTime of the last halftone toggle (any source), or −1.</summary>
+        public float LastHalftoneToggleTime { get; private set; } = -1f;
+        public bool LastToggleWasPinch { get; private set; }
+
+        void OnPinchToggle()
+        {
+            if (effects == null) return;
+            effects.ToggleHalftone();
+            LastHalftoneToggleTime = Time.unscaledTime;
+            LastToggleWasPinch = true;
         }
 
         void ReportMissing(Object o, string field)
@@ -141,7 +160,12 @@ namespace FilterCMR
             }
             if (effects != null)
             {
-                if (KeyDown(KeyCode.T)) effects.ToggleHalftone();
+                if (KeyDown(KeyCode.T))
+                {
+                    effects.ToggleHalftone();
+                    LastHalftoneToggleTime = Time.unscaledTime;
+                    LastToggleWasPinch = false;
+                }
                 if (KeyDown(KeyCode.G)) effects.ToggleGrain();
                 if (KeyDown(KeyCode.X)) effects.ToggleGlitch();
                 if (KeyDown(KeyCode.LeftBracket)) effects.AdjustHalftoneIntensity(-0.1f);

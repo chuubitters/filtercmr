@@ -73,6 +73,14 @@ namespace FilterCMR.Gestures
         {
             if (dt < 0) dt = 0;
             GestureType before = Current;
+            // A pinch (used to toggle halftone) keeps an ACTIVE gesture alive, so pinching
+            // does not make the ribbon/frame disappear. It can never start a gesture.
+            if ((State == GestureState.Active || State == GestureState.Releasing) && Tracked != GestureType.None)
+            {
+                HandPose keep = Tracked == GestureType.TwoFingerPoint ? HandPose.Point : FramePose(FrameFingers);
+                if (leftPose == HandPose.Pinch) leftPose = keep;
+                if (rightPose == HandPose.Pinch) rightPose = keep;
+            }
             GestureType cand = Classify(left, leftPose, right, rightPose, FrameFingers);
             bool canStart = left == HandStatus.Detected && right == HandStatus.Detected;
             Candidate = cand;

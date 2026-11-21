@@ -25,6 +25,7 @@
     <Compile Include="$(Scripts)/Networking/VideoStreamCore.cs" />
     <Compile Include="$(Scripts)/Gestures/GestureType.cs" />
     <Compile Include="$(Scripts)/Gestures/GestureStateMachine.cs" />
+    <Compile Include="$(Scripts)/Gestures/PinchToggle.cs" />
     <Compile Include="$(Scripts)/Mask/MaskCoordinateMapper.cs" />
     <Compile Include="$(Scripts)/Mask/MaskGeometry.cs" />
     <Compile Include="$(Scripts)/Mask/MaskSmoothing.cs" />

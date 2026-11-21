@@ -24,11 +24,11 @@ namespace FilterCMR.Networking
             K_status = A("status"), K_w = A("w"), K_h = A("h"), K_mirrored = A("mirrored"),
             K_fps = A("fps"), K_latency = A("latency"),
             K_id = A("id"), K_score = A("score"), K_state = A("state"), K_age = A("age"),
-            K_ext = A("ext"), K_pose = A("pose"), K_lm = A("lm");
+            K_ext = A("ext"), K_pose = A("pose"), K_lm = A("lm"), K_pinch = A("pinch");
 
         static readonly byte[] V_frame = A("frame"), V_heartbeat = A("heartbeat"), V_bye = A("bye"),
             V_Left = A("Left"), V_Right = A("Right"), V_tracked = A("tracked"), V_held = A("held"),
-            V_point = A("point"), V_peace = A("peace"), V_open = A("open"), V_fist = A("fist"), V_other = A("other"),
+            V_point = A("point"), V_peace = A("peace"), V_pinch = A("pinch"), V_open = A("open"), V_fist = A("fist"), V_other = A("other"),
             V_starting = A("starting"), V_ok = A("ok"), V_reconnecting = A("reconnecting"), V_error = A("error"),
             V_restarting = A("restarting"), V_stopped = A("stopped");
 
@@ -214,6 +214,7 @@ namespace FilterCMR.Networking
                 }
                 else if (Eq(ks, kl, K_score)) { if (!ReadNumber(out double d)) return Fail("hand.score: expected number"); h.score = (float)d; }
                 else if (Eq(ks, kl, K_age)) { if (!ReadNumber(out double d)) return Fail("hand.age: expected number"); h.ageMs = (float)d; }
+                else if (Eq(ks, kl, K_pinch)) { if (!ReadNumber(out double d)) return Fail("hand.pinch: expected number"); h.pinch = (float)d; }
                 else if (Eq(ks, kl, K_state))
                 {
                     if (!ReadString(out int s, out int l)) return Fail("hand.state: expected string");
@@ -224,6 +225,7 @@ namespace FilterCMR.Networking
                     if (!ReadString(out int s, out int l)) return Fail("hand.pose: expected string");
                     h.pose = Eq(s, l, V_point) ? HandPose.Point
                         : Eq(s, l, V_frame) ? HandPose.Frame          // "frame": thumb + index L shape
+                        : Eq(s, l, V_pinch) ? HandPose.Pinch          // "pinch": thumb tip on index tip
                         : Eq(s, l, V_peace) ? HandPose.Peace
                         : Eq(s, l, V_open) ? HandPose.Open
                         : Eq(s, l, V_fist) ? HandPose.Fist

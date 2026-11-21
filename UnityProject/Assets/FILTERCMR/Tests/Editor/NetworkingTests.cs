@@ -132,6 +132,12 @@ namespace FilterCMR.Tests
             Assert.IsTrue(Parse(json, m));
             Assert.AreEqual(HandPose.Frame, m.left.pose);
             Assert.AreEqual(HandPose.Unknown, m.right.pose, "future pose names are tolerated");
+            Assert.AreEqual(-1f, m.left.pinch, 0, "pinch absent -> -1");
+
+            string pinch = "{\"type\":\"frame\",\"v\":1,\"hands\":[{\"id\":\"Left\",\"pose\":\"pinch\",\"pinch\":0.083,\"lm\":" + lm + "}]}";
+            Assert.IsTrue(Parse(pinch, m));
+            Assert.AreEqual(HandPose.Pinch, m.left.pose);
+            Assert.AreEqual(0.083f, m.left.pinch, 1e-6f);
         }
 
         [Test]

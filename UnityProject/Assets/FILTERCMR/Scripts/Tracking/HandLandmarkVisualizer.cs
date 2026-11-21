@@ -37,7 +37,8 @@ namespace FilterCMR.Tracking
                     AddDisc(vh, p, outer + 1.5f, dark);                       // contrast halo on bright video
                     AddRing(vh, p, outer, outer * 0.55f, color);
                     bool used = (g == GestureType.TwoFingerPoint && i == HandLandmark.IndexTip)
-                             || (g == GestureType.TwoFingerFrame && (i == HandLandmark.IndexTip || i == frameSecond));
+                             || (g == GestureType.TwoFingerFrame && (i == HandLandmark.IndexTip || i == frameSecond))
+                             || (hand.Pose == HandPose.Pinch && (i == HandLandmark.IndexTip || i == HandLandmark.ThumbTip));
                     if (used) AddDisc(vh, p, outer * 0.45f, TipCore);
                 }
                 else

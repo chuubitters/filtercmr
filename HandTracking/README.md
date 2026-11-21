@@ -37,6 +37,8 @@ python tools/udp_monitor.py   # see what Unity receives (in a second terminal, v
 --min-tracking-confidence    0–1 (default 0.5)
 --euro-min-cutoff / --euro-beta   smoothing (default 1.2 / 6.0)
 --hand-hold-ms MS            keep a lost hand for MS (default 150)
+--thumb-out-ratio R          thumb counts as out for the "L" frame above R x palm (default 0.5; lower = easier)
+--pinch-ratio R              thumb-index tips closer than R x palm = pinch (default 0.25; higher = easier)
 --no-mirror                  send un-mirrored coordinates
 --swap-handedness            if Left/Right come out inverted
 --udp-host / --udp-port      target (default 127.0.0.1:5065)

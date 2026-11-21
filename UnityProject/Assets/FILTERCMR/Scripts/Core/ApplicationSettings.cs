@@ -66,6 +66,12 @@ namespace FilterCMR.Core
         [Header("Gestures")]
         [Tooltip("Fingers that form the FRAME gesture and its four corners. Index + Thumb = an \"L\" with each hand (default). Index + Middle = peace signs.")]
         public FilterCMR.Gestures.FrameFingers frameFingers = FilterCMR.Gestures.FrameFingers.IndexAndThumb;
+        [Tooltip("Touch thumb tip to index tip (either hand) to toggle the halftone effect.")]
+        public bool pinchTogglesHalftone = true;
+        [Tooltip("How long the pinch must be held before it toggles.")]
+        [Min(0f)] public float pinchHoldSeconds = 0.12f;
+        [Tooltip("After a toggle, both hands must stop pinching this long before the next toggle.")]
+        [Min(0f)] public float pinchRearmSeconds = 0.3f;
         [Tooltip("Both hands must show the pose this long before the gesture activates.")]
         [Min(0f)] public float gestureConfirmSeconds = 0.2f;
         [Tooltip("Grace period before an active gesture ends after the pose is lost.")]

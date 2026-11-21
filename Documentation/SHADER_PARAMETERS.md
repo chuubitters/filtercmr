@@ -8,7 +8,7 @@ Changing them: Inspector (anytime) · settings panel **S** (marked ◆) · keys 
 
 | Parameter | Default | Range | Effect | Uniform |
 |---|---|---|---|---|
-| Halftone Enabled **T** | on | | Dots + colour treatment inside the mask. Off: the mask region shows the webcam (plus any RGB split, glitch or grain still on) | `_HTEnabled` |
+| Halftone Enabled **T** / pinch | on | | Dots + colour treatment inside the mask. Off: the mask region shows the webcam (plus any RGB split, glitch or grain still on) | `_HTEnabled` |
 | Halftone Intensity ◆ **[ ]** | 1 | 0–1 | Blend between webcam and full halftone | `_HTIntensity` |
 | Dot Spacing ◆ | 9 px | 3–40 | Distance between dot centres | `_HTSpacingPx` |
 | Dot Size ◆ | 1 | 0.2–1.6 | Dot radius multiplier; 1 = dots touch at 100% coverage | `_HTDotSize` |

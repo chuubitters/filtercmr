@@ -35,6 +35,7 @@ def _hand_dict(h: HandTrack, now: float) -> Dict:
         "age": round(h.age_ms(now), 1),
         "ext": [1 if e else 0 for e in h.extended],
         "pose": h.pose,
+        "pinch": round(float(min(h.pinch, 9.99)), 3),
         "lm": [float(v) for v in flat],
     }
 

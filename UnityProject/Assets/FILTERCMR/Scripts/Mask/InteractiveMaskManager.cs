@@ -127,7 +127,10 @@ namespace FilterCMR.Mask
             _pointsStale = false;
 
             // A missing hand keeps its last points (the mask is fading out at that point anyway).
-            if (left.Present)
+            // A PINCHING hand also keeps them: pinching toggles halftone and must not collapse the frame.
+            bool lFreeze = left.Present && left.Pose == HandPose.Pinch && !snapL;
+            bool rFreeze = right.Present && right.Pose == HandPose.Pinch && !snapR;
+            if (left.Present && !lFreeze)
             {
                 _lAppeared = left.AppearedAt;
                 Track(ref _lIndex, Iso(left, HandLandmark.IndexTip), snapL, dt, rate, speed);
@@ -135,7 +138,9 @@ namespace FilterCMR.Mask
                 NVector2 d = MaskMath.SafeNormalize(Iso(left, HandLandmark.IndexTip) - Iso(left, HandLandmark.IndexPip), NVector2.Zero);
                 Track(ref _lDir, d, snapL, dt, rate, 0f);
             }
-            if (right.Present)
+            if (lFreeze) _lAppeared = left.AppearedAt;
+            if (rFreeze) _rAppeared = right.AppearedAt;
+            if (right.Present && !rFreeze)
             {
                 _rAppeared = right.AppearedAt;
                 Track(ref _rIndex, Iso(right, HandLandmark.IndexTip), snapR, dt, rate, speed);

@@ -359,6 +359,7 @@ namespace FilterCMR.UI
                    .Append("  [");
                 for (int i = 0; i < h.Extended.Length; i++) _sb.Append(h.Extended[i] ? "TIMRP"[i] : '·');
                 _sb.Append(']');
+                if (h.PinchRatio >= 0f) _sb.Append("  pinch ").Append(h.PinchRatio.ToString("0.00"));
             }
             _sb.Append('\n');
         }

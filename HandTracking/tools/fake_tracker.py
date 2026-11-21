@@ -28,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import cv2  # noqa: E402
 import numpy as np  # noqa: E402
 
-from finger_state import FINGERTIPS, classify_pose, finger_extended  # noqa: E402
+from finger_state import FINGERTIPS, classify_hand  # noqa: E402
 from hand_detector import HandTrack  # noqa: E402
 from synthetic import make_hand  # noqa: E402
 from udp_sender import UdpSender, build_packet  # noqa: E402
@@ -38,6 +38,7 @@ POSES = {
     "point": (False, True, False, False, False),
     "peace": (False, True, True, False, False),
     "frame": (True, True, False, False, False),   # L shape: thumb + index
+    "pinch": (False, True, False, False, False),  # thumb tip touching index tip (toggles halftone)
     "open": (True, True, True, True, True),
     "fist": (False, False, False, False, False),
 }
@@ -61,9 +62,9 @@ def build_hands(args, t: float, aspect: float):
             continue  # simulate a lost hand for the last second of each period
         center = (cx + 0.06 * math.sin(t * 0.9 + phase), 0.58 + 0.05 * math.cos(t * 1.3 + phase))
         tilt = 12 * math.sin(t * 0.7 + phase) + (-10 if label == "Left" else 10)
-        lm = make_hand(POSES[pose], angle_deg=tilt, center=center, scale=0.13, aspect=aspect)
-        ext = finger_extended(lm, aspect)
-        hands.append(HandTrack(label, 0.96, lm, lm, "tracked", t, 0.0, ext, classify_pose(ext)))
+        lm = make_hand(POSES[pose], angle_deg=tilt, center=center, scale=0.13, aspect=aspect, pinch=(pose == "pinch"))
+        ext, hand_pose, pinch = classify_hand(lm, aspect)
+        hands.append(HandTrack(label, 0.96, lm, lm, "tracked", t, 0.0, ext, hand_pose, pinch))
     return hands
 
 

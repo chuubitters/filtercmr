@@ -34,7 +34,7 @@ import cv2
 import numpy as np
 
 from config import MODEL_URL, TrackerConfig
-from finger_state import WRIST, classify_pose, finger_extended
+from finger_state import WRIST, classify_hand
 from one_euro import OneEuroFilter
 
 log = logging.getLogger("filtercmr.detector")
@@ -94,6 +94,7 @@ class HandTrack:
     first_seen: float
     extended: List[bool] = field(default_factory=lambda: [False] * 5)
     pose: str = "other"
+    pinch: float = 9.99  # thumb-tip <-> index-tip distance / palm size
 
     def age_ms(self, now: float) -> float:
         return max(0.0, (now - self.last_seen) * 1000.0)
@@ -203,7 +204,7 @@ class HandTracker:
                 smoothed = self._filter(det.label)(det.landmarks, now)
             else:
                 smoothed = det.landmarks.copy()
-            ext = finger_extended(det.landmarks, aspect)
+            ext, pose, pinch = classify_hand(det.landmarks, aspect, self.cfg.thumb_out_ratio, self.cfg.pinch_ratio)
             prev = self.tracks.get(det.label)
             self.tracks[det.label] = HandTrack(
                 label=det.label,
@@ -214,7 +215,8 @@ class HandTracker:
                 last_seen=now,
                 first_seen=prev.first_seen if prev else now,
                 extended=ext,
-                pose=classify_pose(ext),
+                pose=pose,
+                pinch=pinch,
             )
 
         hold_s = self.cfg.hand_hold_ms / 1000.0

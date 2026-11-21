@@ -73,7 +73,8 @@ def draw(
         _text(img, f"{ix:.3f},{iy:.3f}", (pts[8][0] + 10, pts[8][1] - 8), 0.4, CYAN)
         wx, wy = pts[0]
         flags = "".join(n[0].upper() if e else "." for n, e in zip(FINGER_NAMES, hand.extended))
-        _text(img, f"{hand.label.upper()} {hand.score:.2f} [{flags}] {hand.pose}", (wx - 60, wy + 28), 0.5, WHITE)
+        _text(img, f"{hand.label.upper()} {hand.score:.2f} [{flags}] {hand.pose}  pinch {hand.pinch:.2f}", (wx - 60, wy + 28), 0.5,
+              CYAN if hand.pose in ("frame", "pinch") else WHITE)
         if hand.state != "tracked":
             _text(img, "HELD", (wx - 60, wy + 48), 0.45, AMBER)
 

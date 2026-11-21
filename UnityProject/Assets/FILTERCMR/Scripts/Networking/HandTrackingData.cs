@@ -19,8 +19,9 @@ namespace FilterCMR.Networking
     public enum HandState { Tracked = 0, Held }
 
     /// <summary>"hands[].pose" — per-hand classification made by Python (finger_state.classify_pose).
-    /// Point = index only (thumb folded); Frame = thumb + index ("L"); Peace = index + middle.</summary>
-    public enum HandPose { Unknown = 0, Point, Peace, Open, Fist, Other, Frame }
+    /// Point = index only (thumb folded); Frame = thumb + index ("L"); Peace = index + middle;
+    /// Pinch = thumb tip touching index tip.</summary>
+    public enum HandPose { Unknown = 0, Point, Peace, Open, Fist, Other, Frame, Pinch }
 
     /// <summary>"cam.status".</summary>
     public enum CameraStatus { Unknown = 0, Starting, Ok, Reconnecting, Error, Stopped }
@@ -59,6 +60,8 @@ namespace FilterCMR.Networking
         /// <summary>"ext": thumb, index, middle, ring, pinky.</summary>
         public readonly bool[] extended = new bool[5];
         public HandPose pose;
+        /// <summary>"pinch": thumb-tip ↔ index-tip distance / palm size (small = touching); −1 if not sent.</summary>
+        public float pinch = -1f;
         /// <summary>"lm": 21 × (x, y, z). x/y normalised 0–1, origin top-left, y down; x pre-mirrored if cam.mirrored.</summary>
         public readonly float[] landmarks = new float[LandmarkFloats];
 
@@ -75,6 +78,7 @@ namespace FilterCMR.Networking
             state = HandState.Tracked;
             ageMs = 0f;
             pose = HandPose.Unknown;
+            pinch = -1f;
             System.Array.Clear(extended, 0, extended.Length);
             System.Array.Clear(landmarks, 0, landmarks.Length);
         }
@@ -87,6 +91,7 @@ namespace FilterCMR.Networking
             state = o.state;
             ageMs = o.ageMs;
             pose = o.pose;
+            pinch = o.pinch;
             System.Array.Copy(o.extended, extended, extended.Length);
             System.Array.Copy(o.landmarks, landmarks, landmarks.Length);
         }

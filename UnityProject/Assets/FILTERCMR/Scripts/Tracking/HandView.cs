@@ -19,6 +19,8 @@ namespace FilterCMR.Tracking
         /// <summary>Handedness confidence from Python (0–1).</summary>
         public float Score { get; private set; }
         public float AgeMs { get; private set; }
+        /// <summary>Thumb-tip ↔ index-tip distance / palm size from Python (−1 if not sent).</summary>
+        public float PinchRatio { get; private set; } = -1f;
         public readonly bool[] Extended = new bool[5];
 
         /// <summary>Latest landmarks from the tracker (normalised, y down).</summary>
@@ -43,6 +45,7 @@ namespace FilterCMR.Tracking
             Pose = d.pose;
             Score = d.score;
             AgeMs = d.ageMs;
+            PinchRatio = d.pinch;
             for (int i = 0; i < Extended.Length; i++) Extended[i] = d.extended[i];
             for (int i = 0; i < HandLandmark.Count; i++)
                 Target[i] = new Vector2(d.landmarks[i * 3], d.landmarks[i * 3 + 1]);
@@ -74,6 +77,7 @@ namespace FilterCMR.Tracking
             State = HandState.Tracked;
             Score = 0f;
             AgeMs = 0f;
+            PinchRatio = -1f;
             for (int i = 0; i < Extended.Length; i++) Extended[i] = false;
         }
     }

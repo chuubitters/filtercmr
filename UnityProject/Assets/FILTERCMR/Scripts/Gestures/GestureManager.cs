@@ -23,6 +23,7 @@ namespace FilterCMR.Gestures
         [SerializeField] HandTrackingManager tracking;
 
         readonly GestureStateMachine _machine = new GestureStateMachine();
+        readonly PinchToggle _pinch = new PinchToggle();
 
         public ApplicationSettings Settings { get => settings != null ? settings : ApplicationSettings.Fallback; set => settings = value; }
         public HandTrackingManager Tracking { get => tracking; set => tracking = value; }
@@ -59,6 +60,13 @@ namespace FilterCMR.Gestures
         /// <summary>Fired when <see cref="CurrentGesture"/> changes: (previous, current).</summary>
         public event System.Action<GestureType, GestureType> GestureChanged;
 
+        /// <summary>Fired once per thumb-index pinch (either hand) when Pinch Toggles Halftone is on.</summary>
+        public event System.Action PinchToggled;
+
+        public bool Pinching => _pinch.Pinching;
+        public float PinchProgress => _pinch.Progress;
+        public bool PinchArmed => _pinch.Armed;
+
         /// <summary>Smoothed fingertip position; false if that hand is not present.</summary>
         public bool TryGetFingertip(Handedness hand, int landmark, out Vector2 position)
         {
@@ -78,6 +86,15 @@ namespace FilterCMR.Gestures
             _machine.ConfirmSeconds = s.gestureConfirmSeconds;
             _machine.ReleaseSeconds = s.gestureReleaseSeconds;
             _machine.FrameFingers = s.frameFingers;
+            _pinch.HoldSeconds = s.pinchHoldSeconds;
+            _pinch.RearmSeconds = s.pinchRearmSeconds;
+            bool lp = LeftStatus == HandStatus.Detected && LeftPose == HandPose.Pinch;
+            bool rp = RightStatus == HandStatus.Detected && RightPose == HandPose.Pinch;
+            if (_pinch.Update(lp, rp, Time.unscaledDeltaTime) && s.pinchTogglesHalftone)
+            {
+                Debug.Log("[FILTER CMR] pinch → toggle halftone");
+                PinchToggled?.Invoke();
+            }
             GestureType before = _machine.Current;
             if (_machine.Update(LeftStatus, LeftPose, RightStatus, RightPose, Time.unscaledDeltaTime))
             {
@@ -90,6 +107,7 @@ namespace FilterCMR.Gestures
         {
             GestureType before = _machine.Current;
             _machine.Reset();
+            _pinch.Reset();
             if (before != GestureType.None) GestureChanged?.Invoke(before, GestureType.None);
         }
 
@@ -111,6 +129,7 @@ namespace FilterCMR.Gestures
                 case HandPose.Point: return "point";
                 case HandPose.Peace: return "peace";
                 case HandPose.Frame: return "frame";
+                case HandPose.Pinch: return "pinch";
                 case HandPose.Open: return "open";
                 case HandPose.Fist: return "fist";
                 case HandPose.Other: return "other";

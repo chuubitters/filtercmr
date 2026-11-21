@@ -39,7 +39,8 @@ The tracker is the only sender; Unity only listens. UDP is fire-and-forget: pack
       "state": "tracked",     // "tracked" (seen this frame) | "held" (briefly lost, last pose)
       "age": 0.0,             // ms since this hand was last actually detected
       "ext": [0,1,0,0,0],     // advisory finger extension: thumb,index,middle,ring,pinky
-      "pose": "point",        // "point" (index only) | "frame" (thumb + index L) | "peace" | "open" | "fist" | "other"
+      "pose": "point",        // "point" (index only) | "frame" (thumb + index L) | "pinch" | "peace" | "open" | "fist" | "other"
+      "pinch": 1.15,          // thumb-tip <-> index-tip distance / palm size (small = touching)
       "lm": [x0,y0,z0, x1,y1,z1, … x20,y20,z20]   // 63 floats, 21 landmarks
     }
   ]
@@ -108,3 +109,4 @@ Receiver rules: chunks may arrive in any order, and duplicates are ignored. A ne
 ## Changelog
 
 * **Pose `frame` added** (still protocol v1): thumb + index extended, other fingers folded. Index-only with the thumb out is now `frame` rather than `point`. Receivers that don't know `frame` treat it as an unknown pose. The Unity parser in this repo supports it.
+* **Pose `pinch` and field `pinch` added** (still protocol v1). `pinch` = thumb tip touching index tip, with the index raised so a fist doesn't count. Thresholds: `--pinch-ratio` (0.25) and `--thumb-out-ratio` (0.5). Unity toggles halftone on a pinch.

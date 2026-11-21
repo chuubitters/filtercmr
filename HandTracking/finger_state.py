@@ -38,6 +38,17 @@ STRAIGHT_COS = 0.5
 # Tip must be this much further from the wrist than the PIP joint.
 REACH_RATIO = 1.1
 
+# Thumb "out" test (all distances relative to palm size = wrist -> middle MCP).
+# Distance based only: real thumbs bend at the IP joint and are often
+# foreshortened, so a straightness requirement rejected genuine "L" shapes.
+THUMB_OUT_RATIO = 0.50      # thumb tip <-> index MCP: far from the index base (tucked ~0.4)
+THUMB_AWAY_RATIO = 0.65     # thumb tip <-> middle MCP: not tucked across the palm
+THUMB_LENGTH_RATIO = 0.35   # thumb tip <-> thumb MCP: visibly extended, not folded
+
+# Pinch: thumb tip touching the index tip.
+PINCH_RATIO = 0.25          # thumb tip <-> index tip below this = pinch
+PINCH_INDEX_REACH = 1.0     # index tip must be this far from the wrist (excludes fists)
+
 
 def _unit(v: np.ndarray) -> np.ndarray:
     n = np.linalg.norm(v)
@@ -52,19 +63,40 @@ def to_planar(landmarks: np.ndarray, aspect: float) -> np.ndarray:
     return pts
 
 
-def finger_extended(landmarks: np.ndarray, aspect: float = 16 / 9) -> list[bool]:
+def palm_size(p: np.ndarray) -> float:
+    return float(np.linalg.norm(p[MIDDLE_MCP] - p[WRIST])) + 1e-9
+
+
+def thumb_extended(p: np.ndarray, out_ratio: float = THUMB_OUT_RATIO) -> bool:
+    """Planar landmarks -> is the thumb spread out (as in an "L")?"""
+    palm = palm_size(p)
+    tip = p[THUMB_TIP]
+    return bool(
+        np.linalg.norm(tip - p[INDEX_MCP]) > out_ratio * palm
+        and np.linalg.norm(tip - p[MIDDLE_MCP]) > THUMB_AWAY_RATIO * palm
+        and np.linalg.norm(tip - p[THUMB_MCP]) > THUMB_LENGTH_RATIO * palm
+    )
+
+
+def pinch_ratio(landmarks: np.ndarray, aspect: float = 16 / 9) -> float:
+    """Thumb-tip to index-tip distance divided by palm size (small = touching)."""
+    p = to_planar(landmarks, aspect)
+    return float(np.linalg.norm(p[THUMB_TIP] - p[INDEX_TIP]) / palm_size(p))
+
+
+def is_pinch(landmarks: np.ndarray, aspect: float = 16 / 9, threshold: float = PINCH_RATIO) -> bool:
+    p = to_planar(landmarks, aspect)
+    palm = palm_size(p)
+    touching = np.linalg.norm(p[THUMB_TIP] - p[INDEX_TIP]) < threshold * palm
+    index_up = np.linalg.norm(p[INDEX_TIP] - p[WRIST]) > PINCH_INDEX_REACH * palm
+    return bool(touching and index_up)
+
+
+def finger_extended(landmarks: np.ndarray, aspect: float = 16 / 9, thumb_out: float = THUMB_OUT_RATIO) -> list[bool]:
     """Return [thumb, index, middle, ring, pinky] extension flags."""
     p = to_planar(landmarks, aspect)
     wrist = p[WRIST]
-    out: list[bool] = []
-
-    # Thumb: tip far from the palm side (pinky MCP) compared to its IP joint,
-    # and reasonably straight.
-    palm = np.linalg.norm(p[MIDDLE_MCP] - wrist) + 1e-9
-    thumb_reach = np.linalg.norm(p[THUMB_TIP] - p[PINKY_MCP]) > np.linalg.norm(p[THUMB_IP] - p[PINKY_MCP]) * 1.05
-    thumb_out = np.linalg.norm(p[THUMB_TIP] - p[INDEX_MCP]) > 0.5 * palm
-    thumb_straight = float(np.dot(_unit(p[THUMB_IP] - p[THUMB_MCP]), _unit(p[THUMB_TIP] - p[THUMB_IP]))) > STRAIGHT_COS
-    out.append(bool(thumb_reach and thumb_out and thumb_straight))
+    out: list[bool] = [thumb_extended(p, thumb_out)]
 
     for mcp, pip, _dip, tip in _LONG_FINGERS:
         straight = float(np.dot(_unit(p[pip] - p[mcp]), _unit(p[tip] - p[pip]))) > STRAIGHT_COS
@@ -73,9 +105,20 @@ def finger_extended(landmarks: np.ndarray, aspect: float = 16 / 9) -> list[bool]
     return out
 
 
+def classify_hand(landmarks: np.ndarray, aspect: float = 16 / 9, thumb_out: float = THUMB_OUT_RATIO,
+                  pinch_threshold: float = PINCH_RATIO) -> tuple[list[bool], str, float]:
+    """Full per-hand classification: (extension flags, pose, pinch ratio).
+    A thumb-index pinch overrides the finger-shape pose."""
+    ext = finger_extended(landmarks, aspect, thumb_out)
+    ratio = pinch_ratio(landmarks, aspect)
+    pose = "pinch" if is_pinch(landmarks, aspect, pinch_threshold) else classify_pose(ext)
+    return ext, pose, ratio
+
+
 def classify_pose(ext: list[bool]) -> str:
     """Coarse single-hand pose name from extension flags.
 
+    pinch : (see classify_hand) thumb tip touching index tip
     point : index only (thumb folded)
     frame : thumb + index, others folded ("L" shape, a camera-frame corner)
     peace : index + middle (thumb ignored)

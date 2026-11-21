@@ -48,6 +48,53 @@ namespace FilterCMR.Tests
         }
 
         [Test]
+        public void PinchKeepsActiveGestureButCannotStartOne()
+        {
+            var m = Make();
+            Run(m, 0.5f, D, HandPose.Pinch, D, HandPose.Pinch);
+            Assert.AreEqual(GestureState.Idle, m.State, "pinch alone starts nothing");
+
+            Run(m, 0.3f, D, HandPose.Frame, D, HandPose.Frame);
+            Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
+            Run(m, 1.0f, D, HandPose.Frame, D, HandPose.Pinch);   // right hand pinches to toggle halftone
+            Assert.AreEqual(GestureState.Active, m.State, "frame stays while pinching");
+            Run(m, 0.2f, D, HandPose.Frame, D, HandPose.Frame);
+            Assert.AreEqual(GestureType.TwoFingerFrame, m.Current);
+
+            var r = Make();
+            Run(r, 0.3f, D, HandPose.Point, D, HandPose.Point);
+            Run(r, 1.0f, D, HandPose.Pinch, D, HandPose.Point);
+            Assert.AreEqual(GestureType.TwoFingerPoint, r.Current, "ribbon stays while pinching");
+        }
+
+        [Test]
+        public void PinchToggleFiresOncePerPinchAndRearmsAfterRelease()
+        {
+            var p = new PinchToggle { HoldSeconds = 0.12f, RearmSeconds = 0.3f, GapTolerance = 0.1f };
+            int fires = 0;
+            void Step(bool l, bool r, float seconds) { for (float t = 0; t < seconds - 1e-6f; t += Dt) if (p.Update(l, r, Dt)) fires++; }
+
+            Step(false, true, 0.05f);
+            Assert.AreEqual(0, fires, "too short");
+            Step(false, true, 2.0f);
+            Assert.AreEqual(1, fires, "holding fires exactly once");
+            Step(false, false, 0.1f);
+            Step(true, false, 0.5f);
+            Assert.AreEqual(1, fires, "not re-armed yet (released < 0.3 s)");
+            Step(false, false, 0.35f);
+            Step(true, false, 0.2f);
+            Assert.AreEqual(2, fires, "second pinch after release toggles again");
+            Step(true, true, 0.5f);
+            Assert.AreEqual(2, fires, "both hands pinching = one toggle");
+
+            // tracking jitter: one-frame gaps while building up do not reset the timer
+            var j = new PinchToggle { HoldSeconds = 0.12f };
+            int f2 = 0;
+            for (int i = 0; i < 12; i++) if (j.Update(i % 3 != 2, false, Dt)) f2++;
+            Assert.AreEqual(1, f2);
+        }
+
+        [Test]
         public void PointRequiresHoldTimeBeforeActivating()
         {
             var m = Make();

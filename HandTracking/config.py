@@ -56,6 +56,12 @@ class TrackerConfig:
     euro_beta: float = 6.0
     euro_d_cutoff: float = 1.0
 
+    # --- pose thresholds (relative to palm size) -------------------------
+    # Thumb counts as "out" (frame "L") when its tip is this far from the index base.
+    thumb_out_ratio: float = 0.50
+    # Thumb tip closer than this to the index tip = "pinch" (toggles halftone in Unity).
+    pinch_ratio: float = 0.25
+
     # --- loss handling ----------------------------------------------------
     # Keep a vanished hand alive ("held" state) for this long before dropping it.
     hand_hold_ms: float = 150.0
@@ -106,6 +112,10 @@ class TrackerConfig:
             raise ValueError("video_quality must be 10-100")
         if self.video_width < 64:
             raise ValueError("video_width must be >= 64")
+        if not 0.1 <= self.thumb_out_ratio <= 2.0:
+            raise ValueError("thumb_out_ratio must be 0.1-2.0")
+        if not 0.05 <= self.pinch_ratio <= 1.0:
+            raise ValueError("pinch_ratio must be 0.05-1.0")
         if self.hand_hold_ms < 0:
             raise ValueError("hand_hold_ms must be >= 0")
         self.model_path = Path(self.model_path)
@@ -150,6 +160,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
     sm.add_argument("--euro-beta", type=float, help=f"higher = less lag when moving (default {d.euro_beta})")
     sm.add_argument("--euro-d-cutoff", type=float, help=f"derivative cutoff (default {d.euro_d_cutoff})")
     sm.add_argument("--hand-hold-ms", type=float, help=f"keep a lost hand for N ms (default {d.hand_hold_ms})")
+
+    po = p.add_argument_group("pose thresholds (relative to palm size)")
+    po.add_argument("--thumb-out-ratio", type=float, help=f"thumb counts as out for the L frame above this (default {d.thumb_out_ratio}; lower = easier)")
+    po.add_argument("--pinch-ratio", type=float, help=f"thumb-index tip distance below this = pinch (default {d.pinch_ratio}; higher = easier)")
 
     net = p.add_argument_group("network")
     net.add_argument("--udp-host", type=str, help=f"Unity host (default {d.udp_host})")

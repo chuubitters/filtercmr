@@ -21,6 +21,7 @@ The visual language is an original take on Y2K music-editorial print: halftone d
 * **Both index fingers up (point):** an organic ribbon of blue halftone flows between your index fingertips and follows them.
 * **Thumb + index "L" on both hands** (like framing a photo): a halftone frame spans the four fingertips (both thumb tips and both index tips). It stretches, rotates and skews with your hands, and its dots follow the frame's perspective.
 * Inside the shape the image becomes an editorial blue/cyan print: luminance-driven dots (circle, square, soft or irregular) over a tonal blue ramp, with fine grain, subtle RGB split and controlled glitch bands. The edge is soft, with a faint cyan glow. Outside, every pixel is the original webcam image.
+* **Pinch** (thumb tip to index tip) toggles the halftone on and off. The ribbon or frame stays put while you pinch.
 * Switching gestures cross-fades; dropping your hands fades back to the plain webcam.
 
 ## Architecture
@@ -66,7 +67,7 @@ cd filtercmr/HandTracking
 
 Shortcuts in the Game view:
 * **D** debug panel · **R** restart UDP · **H** landmarks · **C** next camera · **M** flip video
-* **1** ribbon · **2** quad · **0** mask off (press again → AUTO) · **T** halftone · **G** grain · **X** glitch · **[ ]** intensity
+* **1** ribbon · **2** quad · **0** mask off (press again → AUTO) · **T** halftone (or **pinch** thumb + index) · **G** grain · **X** glitch · **[ ]** intensity
 * **V** mask debug · **S** settings panel · **P** presentation mode
 
 Everything also works with the mouse: the top-bar buttons and the settings panel.

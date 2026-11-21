@@ -55,6 +55,7 @@ Press **Play** in Unity, then raise both hands:
 | Both hands, index fingers up, other fingers folded, hold ~0.2 s | **TWO FINGER POINT**: the ribbon appears between the index tips and follows them |
 | Both hands in an "L": thumb and index out, other fingers folded | **TWO FINGER FRAME**: the halftone frame through both thumb tips and both index tips |
 | Switch between the two | Smooth cross-fade, no flash |
+| **Pinch** (touch thumb tip to index tip, either hand) | Halftone toggles on/off; the top bar flashes *HALFTONE ON / OFF · PINCH*. The ribbon or frame stays in place while you pinch |
 | Drop your hands | The mask fades out (≤ 0.25 s grace + 0.5 s fade) and the normal webcam returns |
 
 ## 4. Controls
@@ -67,7 +68,7 @@ All the Milestone 2 keys still work: **D** debug panel, **R** restart UDP, **H**
 | **2** | Quad mode: the frame whenever both hands are visible, any pose. Press again for AUTO |
 | **0** | Mask off (plain webcam). Press again for AUTO |
 | *(default)* | **AUTO**: gestures decide (point → ribbon, thumb + index "L" → quad) |
-| **T** | Halftone on/off |
+| **T** | Halftone on/off (same as a pinch) |
 | **G** | Grain on/off |
 | **X** | Glitch on/off |
 | **[** / **]** | Halftone intensity −/+ 10% |
@@ -108,7 +109,9 @@ If everything is mirrored relative to your hands, press **M** (see the Milestone
 | Gesture shows in the debug panel but nothing appears | Check that MASK MODE isn't OFF (press **0** to toggle) and that `Opacity` and `Halftone Intensity` aren't 0 |
 | The mask appears offset from your fingers | Press **V** and compare the markers with your fingertips. A constant offset means an aspect mismatch (the debug panel warns about it; see Milestone 2) |
 | Ribbon becomes a frame (or flickers between them) | Your thumb is out: the tracker reads thumb + index as the frame's L. Tuck the thumb for the ribbon |
-| L shape not recognised | Spread the thumb clearly sideways from the index finger and keep the other three fingers folded. Watch the tracker preview: it should show `[TI...] frame` |
+| Frame appears with key **2** but not in AUTO | AUTO needs **both** hands to report the pose `frame`. Check the debug panel's LEFT/RIGHT HAND lines (or the tracker preview, which shows `[TI...] frame`). If you still see `point`, the tracker didn't see the thumb as out: restart `./run.sh` after pulling, spread the thumb sideways, or loosen the threshold with `./run.sh --thumb-out-ratio 0.4` (default 0.5) |
+| Pinch doesn't toggle | The hand must show pose `pinch` (debug panel `pinch 0.xx` below 0.25). Loosen it with `./run.sh --pinch-ratio 0.35`. After a toggle, open the fingers briefly (0.3 s) before the next pinch. Disable it with *Pinch Toggles Halftone* in `FilterCMRSettings` |
+| Halftone toggles by accident | Tighten with `./run.sh --pinch-ratio 0.18`, or raise *Pinch Hold Seconds* |
 | Ribbon flickers in and out | Hold the pose steadier, or raise **Fade Out**. Forced mode **1** ignores the pose |
 | Faces too hard to recognise inside the mask | Lower **Dot Spacing** (finer dots), lower **Contrast**, raise **Tone Mix**, or lower **Halftone Intensity** (**[**) |
 | Too much distortion | **X** (glitch off), or lower *Glitch Intensity* / *RGB Split* in the settings panel |

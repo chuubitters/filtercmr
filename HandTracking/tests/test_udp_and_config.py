@@ -40,6 +40,7 @@ def test_packet_schema_and_size():
         assert lm.shape == (21, 3)
         assert lm[:, :2].min() >= 0.0 and lm[:, :2].max() <= 1.0
         assert h["ext"] == [0, 1, 0, 0, 0] and h["pose"] == "point"
+        assert isinstance(h["pinch"], float)
     assert msg["hands"][1]["state"] == "held"
     assert msg["hands"][1]["age"] == pytest.approx(50.0, abs=0.2)
     assert msg["hands"][1]["lm"][0] == 1.0 and msg["hands"][1]["lm"][1] == 0.0

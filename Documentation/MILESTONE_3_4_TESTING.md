@@ -8,11 +8,11 @@ None of the 🖐 tests have been run: the development machine has no Mac, Unity 
 
 | # | Suite | How to run | Result during development |
 |---|---|---|---|
-| A1 | Unity EditMode tests (62): parser, gestures, **masks (22)**, **uniform packing (7)** | Unity → Test Runner → EditMode → Run All | ✅ 62/62 under .NET 8 via `Tools/DotnetVerification` (same source files). 🖐 not yet run inside Unity |
-| A2 | End-to-end UDP (4): real Python → C# receivers | `cd Tools/DotnetVerification && FILTERCMR_PYTHON=../../HandTracking/.venv/bin/python dotnet run` | ✅ 66/66 (62 + 4) |
+| A1 | Unity EditMode tests (64): parser, gestures, **masks (22)**, **uniform packing (7)** | Unity → Test Runner → EditMode → Run All | ✅ 64/64 under .NET 8 via `Tools/DotnetVerification` (same source files). 🖐 not yet run inside Unity |
+| A2 | End-to-end UDP (4): real Python → C# receivers | `cd Tools/DotnetVerification && FILTERCMR_PYTHON=../../HandTracking/.venv/bin/python dotnet run` | ✅ 68/68 (64 + 4) |
 | A3 | **Shader check (36):** the real `FILTERCMR_WebcamComposite.shader` compiled (6 keyword variants) and executed on a software GPU with uniforms from the real C# mask code | `python3 Tools/ShaderPreview/shader_check.py --cgincludes <Unity CGIncludes>` (see Tools/ShaderPreview/README.md) | ✅ 36/36 |
 | A4 | Unity compile check: every runtime + editor script against API stubs, each stub verified in UnityCsReference **2022.3.62f1** / uGUI | `Tools/UnityCompileCheck` (`python3 verify_api.py` → 136 OK, `dotnet build` → 0 errors, 0 warnings) | ✅ |
-| A5 | Python tracker (82) | `cd HandTracking && python -m pytest -q tests` | ✅ 82/82 (adds the `frame` L pose) |
+| A5 | Python tracker (128) | `cd HandTracking && python -m pytest -q tests` | ✅ 128/128 (adds the `frame` L pose and `pinch`) |
 
 What A1–A3 prove:
 
@@ -21,6 +21,8 @@ What A1–A3 prove:
 | Ribbon connects both index tips exactly, stays between min and max width, tapers, bends naturally when a hand moves vertically, never loops back (2,000 random cases), no NaN | `MaskTests.Ribbon*`, `MovingOneHandVerticallyBendsSmoothly`, `RibbonNeverLoopsBack…` |
 | Quad never self-intersects or inverts, contains all four tips (20,000 random cases), triangle and collinear handling, homography correct | `MaskTests.BowTie…`, `RandomTips…`, `Homography…` |
 | Smoothing converges; one-frame jumps are speed-limited | `SmootherSnapsThenConvergesAndLimitsJumps` |
+| Pinch toggles once per pinch, ignores tracking jitter, re-arms after release; a pinch keeps the active ribbon/frame but can't start one | `GestureTests.PinchToggleFiresOncePerPinch…`, `PinchKeepsActiveGesture…`, Python `test_pinch_detected_at_any_rotation_and_distance`, `test_other_poses_are_not_pinch` |
+| Real L shapes with the thumb bent ±50° at the IP joint are `frame` (regression for "AUTO frame not appearing") | Python `test_real_l_shapes_with_bent_thumb_are_frame` |
 | Frame gesture = thumb + index L by default, peace only when configured | `GestureTests.FrameIsThumbIndexLShapeByDefaultAndPeaceOnlyWhenConfigured`, Python `test_finger_state` (L shape at 7 rotations) |
 | Point → frame switch never drops below 15% mask visibility (no flash); removing hands fades out completely within 1 s | `PointToFrameCrossFadesWithoutFlash`, `RemovingHandsFadesOutCompletely` |
 | Mirroring/UV mapping correct for normal, mirrored and vertically flipped displays | `UvRoundTripForAllDisplayOrientations`, shader check "mirrored display" |
@@ -79,4 +81,6 @@ Before starting: run **FILTER CMR → Setup Visual Effects**, then **Validate Sc
 | Game view 4:3 / 21:9 / resized | Mask stays on the fingertips; dots stay round and the same pixel size | ☐ |
 | Python Stream mode (`--stream-video`) | Same behaviour as with the Unity webcam | ☐ |
 | Frame Fingers = Index And Middle | Peace signs make the frame again, using the middle tips | ☐ |
+| Pinch toggle | During a frame, pinch the thumb and index of one hand | Halftone toggles once per pinch; the frame stays; *HALFTONE OFF · PINCH* flashes; holding the pinch doesn't toggle again | ☐ |
+| Pinch without a gesture | Pinch with hands down or open | Halftone still toggles (visible on the next mask); no mask appears from the pinch alone | ☐ |
 | Setup Visual Effects run twice | Second run: "Scene was already complete" (no duplicates) | ☐ |

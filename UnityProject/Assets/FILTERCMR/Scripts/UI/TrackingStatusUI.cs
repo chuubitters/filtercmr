@@ -137,6 +137,10 @@ namespace FilterCMR.UI
                 else if (g.State == GestureState.Confirming)
                     gesture = "<color=" + Palette.DimTag + ">◇ " + GestureManager.Label(g.PendingGesture) + "</color>";
             }
+            if (m.LastHalftoneToggleTime >= 0f && Time.unscaledTime - m.LastHalftoneToggleTime < 1.2f && m.Effects != null)
+                gesture = m.Effects.halftoneEnabled
+                    ? (m.LastToggleWasPinch ? "◆ HALFTONE ON  · PINCH" : "◆ HALFTONE ON")
+                    : (m.LastToggleWasPinch ? "◇ HALFTONE OFF  · PINCH" : "◇ HALFTONE OFF");
             Set(_gesture, gesture);
 
             // hint
@@ -151,7 +155,7 @@ namespace FilterCMR.UI
             else if (g != null && g.CurrentGesture == GestureType.None && m.Masks != null && m.Masks.Mode == MaskMode.Auto)
                 sub = g.FrameFingers == FrameFingers.IndexAndMiddle
                     ? "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  TWO PEACE SIGNS FOR A FRAME</color>"
-                    : "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  THUMB + INDEX \"L\" ON BOTH HANDS FOR A FRAME</color>";
+                    : "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  THUMB + INDEX \"L\" ON BOTH HANDS FOR A FRAME  ·  PINCH TO TOGGLE HALFTONE</color>";
 
             if (!videoOk && cam != null && cam.StatusMessage.Length > 0 && m.Settings.cameraSource != CameraSourceMode.PythonStream)
                 sub = (sub.Length > 0 ? sub + "\n" : "") + "<color=" + Palette.WarnTag + ">CAMERA: " + cam.StatusMessage + "</color>";
