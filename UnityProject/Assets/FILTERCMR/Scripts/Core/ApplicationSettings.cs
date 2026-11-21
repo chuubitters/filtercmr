@@ -71,6 +71,10 @@ namespace FilterCMR.Core
 
         [Header("UI")]
         public bool showDebugPanel = true;
+        [Tooltip("Show the visual settings panel (S) at start.")]
+        public bool showSettingsPanel = true;
+        [Tooltip("Start in presentation mode (all panels hidden, P to leave).")]
+        public bool startInPresentationMode = false;
 
         static ApplicationSettings _fallback;
 

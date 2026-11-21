@@ -1,7 +1,9 @@
 // FILTER CMR — Editor setup tool.
 //
-//   FILTER CMR > Setup Main Scene     create/repair MainScene (idempotent)
-//   FILTER CMR > Validate Scene       report missing objects/references
+//   FILTER CMR > Setup Main Scene       create/repair MainScene (idempotent)
+//   FILTER CMR > Setup Visual Effects   add/repair the Milestone 3/4 mask + halftone systems
+//                                       in the EXISTING MainScene (idempotent; keeps your objects)
+//   FILTER CMR > Validate Scene         report missing objects/references
 //   FILTER CMR > Open Main Scene
 //
 // Re-running Setup never duplicates objects: everything is found by name/type
@@ -13,7 +15,9 @@ using FilterCMR;
 using FilterCMR.CameraInput;
 using FilterCMR.Core;
 using FilterCMR.Gestures;
+using FilterCMR.Mask;
 using FilterCMR.Networking;
+using FilterCMR.Rendering;
 using FilterCMR.Tracking;
 using FilterCMR.UI;
 using UnityEditor;
@@ -31,12 +35,14 @@ namespace FilterCMR.EditorTools
         public const string Root = "Assets/FILTERCMR";
         public const string ScenePath = Root + "/Scenes/MainScene.unity";
         public const string SettingsPath = Root + "/Settings/FilterCMRSettings.asset";
+        public const string ShaderPath = Root + "/Shaders/FILTERCMR_WebcamComposite.shader";
+        public const string MaterialPath = Root + "/Materials/FILTERCMR_WebcamComposite.mat";
         const string FirstRunKey = "FilterCMR.SetupPromptShown";
 
         static readonly string[] Folders =
         {
             Root, Root + "/Scenes", Root + "/Scripts", Root + "/Materials", Root + "/Prefabs",
-            Root + "/Textures", Root + "/Settings",
+            Root + "/Textures", Root + "/Settings", Root + "/Shaders",
         };
 
         // Offer to build the scene the first time the project is opened.
@@ -55,7 +61,18 @@ namespace FilterCMR.EditorTools
         }
 
         [MenuItem("FILTER CMR/Setup Main Scene", priority = 0)]
-        public static void SetupMainScene()
+        public static void SetupMainScene() => RunSetup("Main scene");
+
+        /// <summary>
+        /// Milestone 3/4 migration. Opens the existing MainScene (or creates it), keeps every existing
+        /// object and component, and adds only what is missing: Interactive Mask + Visual Effects
+        /// systems, the composite material on the webcam RawImage, mask debug overlay, settings
+        /// panel and presentation-exit button; then wires all references and saves.
+        /// </summary>
+        [MenuItem("FILTER CMR/Setup Visual Effects", priority = 1)]
+        public static void SetupVisualEffects() => RunSetup("Visual effects");
+
+        static void RunSetup(string what)
         {
             if (EditorApplication.isPlaying)
             {
@@ -135,6 +152,40 @@ namespace FilterCMR.EditorTools
             var debug = GetOrAdd<DebugPanel>(FindOrCreateChild(uiCanvas.transform, "Debug Panel", log).gameObject, log);
             debug.transform.SetAsLastSibling();
 
+            // ---- Milestone 3/4: interactive masks + visual effects -----------------------------
+            var maskManager = GetOrAdd<InteractiveMaskManager>(FindOrCreateChild(systems, "Interactive Mask", log, false).gameObject, log);
+            var effects = GetOrAdd<VisualEffectController>(FindOrCreateChild(systems, "Visual Effects", log, false).gameObject, log);
+            var composite = GetOrAdd<WebcamCompositeController>(displayRt.gameObject, log);
+            var maskDebug = GetOrAdd<MaskDebugVisualizer>(FindOrCreateChild(overlay, "Mask Debug", log).gameObject, log);
+            UIFactory.Stretch(maskDebug.rectTransform);
+            maskDebug.raycastTarget = false;
+            maskDebug.transform.SetAsLastSibling();
+            var settingsPanel = GetOrAdd<VisualSettingsPanel>(FindOrCreateChild(uiCanvas.transform, "Settings Panel", log).gameObject, log);
+            Button presentationExit = EnsurePresentationExit(uiCanvas.transform, log);
+            Shader compositeShader = AssetDatabase.LoadAssetAtPath<Shader>(ShaderPath);
+            if (compositeShader == null) compositeShader = Shader.Find(WebcamCompositeController.ShaderName);
+            Material compositeMaterial = EnsureMaterial(compositeShader, log);
+
+            Wire(maskManager, "tracking", tracking);
+            Wire(maskManager, "gestures", gestures);
+            Wire(maskManager, "display", display);
+            Wire(maskManager, "effects", effects);
+            Wire(composite, "compositeShader", compositeShader);
+            Wire(composite, "compositeMaterial", compositeMaterial);
+            Wire(composite, "masks", maskManager);
+            Wire(composite, "effects", effects);
+            Wire(composite, "display", display);
+            Wire(maskDebug, "settings", settings);
+            Wire(maskDebug, "tracking", tracking);
+            Wire(maskDebug, "masks", maskManager);
+            Wire(settingsPanel, "manager", manager);
+            Wire(manager, "masks", maskManager);
+            Wire(manager, "effects", effects);
+            Wire(manager, "composite", composite);
+            Wire(manager, "maskDebug", maskDebug);
+            Wire(manager, "settingsPanel", settingsPanel);
+            Wire(manager, "presentationExit", presentationExit);
+
             // ---- wire references -------------------------------------------------------------
             Wire(receiver, "settings", settings);
             Wire(video, "settings", settings);
@@ -170,6 +221,7 @@ namespace FilterCMR.EditorTools
             // Build the UI children now so the layout is visible in the Scene view.
             status.Build();
             debug.Build();
+            settingsPanel.Build();
 
             // ---- project settings ------------------------------------------------------------
             PlayerSettings.runInBackground = true;
@@ -185,11 +237,11 @@ namespace FilterCMR.EditorTools
 
             int problems = Validate(verbose: false);
             string summary = log.Count == 0 ? "Scene was already complete; references refreshed." : "Created:\n  " + string.Join("\n  ", log);
-            Debug.Log($"[FILTER CMR] Setup complete ({ScenePath}). {summary}\nValidation problems: {problems}");
+            Debug.Log($"[FILTER CMR] {what} setup complete ({ScenePath}). {summary}\nValidation problems: {problems}");
             Selection.activeGameObject = root;
         }
 
-        [MenuItem("FILTER CMR/Validate Scene", priority = 1)]
+        [MenuItem("FILTER CMR/Validate Scene", priority = 20)]
         public static void ValidateMenu()
         {
             int n = Validate(verbose: true);
@@ -197,7 +249,7 @@ namespace FilterCMR.EditorTools
                 : n + " problem(s) found. See the Console. Run FILTER CMR > Setup Main Scene to fix them.", "OK");
         }
 
-        [MenuItem("FILTER CMR/Open Main Scene", priority = 2)]
+        [MenuItem("FILTER CMR/Open Main Scene", priority = 21)]
         public static void OpenMainScene()
         {
             if (!File.Exists(ScenePath)) { SetupMainScene(); return; }
@@ -213,6 +265,10 @@ namespace FilterCMR.EditorTools
 
             if (AssetDatabase.LoadAssetAtPath<ApplicationSettings>(SettingsPath) == null) Problem("settings asset missing: " + SettingsPath);
             if (UIFactory.DefaultFont == null) Problem("built-in font LegacyRuntime.ttf not found");
+            Shader sh = AssetDatabase.LoadAssetAtPath<Shader>(ShaderPath);
+            if (sh == null) Problem("composite shader missing: " + ShaderPath);
+            else if (!sh.isSupported) Problem("composite shader does not compile / is not supported: check the shader's Inspector for errors");
+            if (AssetDatabase.LoadAssetAtPath<Material>(MaterialPath) == null) Problem("composite material missing: " + MaterialPath);
 
             var manager = Object.FindObjectOfType<FilterCMRManager>();
             if (manager == null) { Problem("no FilterCMRManager in the open scene"); return problems; }
@@ -225,6 +281,9 @@ namespace FilterCMR.EditorTools
                          Object.FindObjectOfType<GestureManager>(), Object.FindObjectOfType<WebcamDisplay>(),
                          Object.FindObjectOfType<HandLandmarkVisualizer>(), Object.FindObjectOfType<HandConnectionVisualizer>(),
                          Object.FindObjectOfType<DebugPanel>(true), Object.FindObjectOfType<TrackingStatusUI>(),
+                         Object.FindObjectOfType<InteractiveMaskManager>(), Object.FindObjectOfType<VisualEffectController>(),
+                         Object.FindObjectOfType<WebcamCompositeController>(), Object.FindObjectOfType<MaskDebugVisualizer>(),
+                         Object.FindObjectOfType<VisualSettingsPanel>(true),
                      })
             {
                 if (mb == null) { Problem("a FILTER CMR component is missing from the scene"); continue; }
@@ -280,6 +339,45 @@ namespace FilterCMR.EditorTools
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             EditorSceneManager.SaveScene(scene, ScenePath);
             return scene;
+        }
+
+        static Material EnsureMaterial(Shader shader, List<string> log)
+        {
+            var mat = AssetDatabase.LoadAssetAtPath<Material>(MaterialPath);
+            if (shader == null)
+            {
+                Debug.LogError("[FILTER CMR] composite shader not found at " + ShaderPath + ". Effects stay off; the webcam still works.");
+                return mat;
+            }
+            if (mat == null)
+            {
+                mat = new Material(shader) { name = "FILTERCMR_WebcamComposite" };
+                AssetDatabase.CreateAsset(mat, MaterialPath);
+                log.Add("+ " + MaterialPath);
+            }
+            else if (mat.shader != shader)
+            {
+                mat.shader = shader;
+                EditorUtility.SetDirty(mat);
+            }
+            return mat;
+        }
+
+        static Button EnsurePresentationExit(Transform uiCanvas, List<string> log)
+        {
+            bool existed = uiCanvas.Find("Presentation Exit") != null;
+            Button b = UIFactory.CreateButton(uiCanvas, "Presentation Exit", "•", 22, out Text t);
+            var rt = (RectTransform)b.transform;
+            rt.anchorMin = rt.anchorMax = new Vector2(1, 1);
+            rt.pivot = new Vector2(1, 1);
+            rt.anchoredPosition = new Vector2(-8, -8);
+            rt.sizeDelta = new Vector2(34, 34);
+            b.GetComponent<Image>().color = new Color(0.03f, 0.08f, 0.18f, 0.35f);
+            t.color = new Color(0.21f, 0.87f, 0.95f, 0.6f);
+            b.transform.SetAsLastSibling();
+            b.gameObject.SetActive(false);   // FilterCMRManager shows it only in presentation mode
+            if (!existed) log.Add("+ UI Canvas/Presentation Exit");
+            return b;
         }
 
         static void AddSceneToBuildSettings()

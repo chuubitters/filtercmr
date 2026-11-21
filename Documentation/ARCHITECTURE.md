@@ -122,9 +122,107 @@ How to find out which mode your Mac needs: [UNITY_TESTING.md](UNITY_TESTING.md#c
 | Webcam permission denied / none / busy / stalled / unplugged | Status message, automatic retry every `cameraRetrySeconds`; restart when stalled |
 | Window loses focus | `Application.runInBackground = true`, so it keeps running |
 
-## Rendering pipeline
+## Interactive masks and the halftone composite (Milestones 3 and 4)
 
-Milestone 2 renders with uGUI on the Built-in Render Pipeline and doesn't need URP. The halftone shader and masks arrive in Milestone 3. The render pipeline (URP or Built-in) will be decided there, and nothing in M2 depends on it.
+```
+ HandTrackingManager ──► GestureManager ──► CurrentGesture (point / peace, debounced)
+   HandView.Smoothed[21]          │
+        │ IMAGE coords             ▼
+        │              MaskTransitions (mode: Auto / Ribbon / Quad / Off)
+        ▼                         │ targets
+ InteractiveMaskManager ◄─────────┘
+   × aspect → ISO space
+   PointSmoother ×6 (L/R index tip, L/R middle tip, L/R index direction)
+   MaskFader ×2 (ribbon, quad; cross-fade)
+   RibbonMaskGenerator ──► RibbonShape  (25 centre samples + half-widths)
+   QuadrilateralMaskGenerator ──► QuadShape (convex hull + homography)
+        │
+        ▼
+ WebcamCompositeController (on the Webcam Display RawImage)
+   VisualEffectController.Fill → EffectValues
+   CompositeUniformWriter → Material.SetFloat / SetVector / SetVectorArray (cached IDs)
+        │
+        ▼
+ FILTERCMR/WebcamComposite shader  (one pass; the same draw call that showed the webcam)
+   q = inverse(uvRect)(uv) → mask SDFs → outside: webcam pixel unchanged
+                                        inside: glitch + RGB split → halftone → grain → blend + edge glow
+```
+
+### Rendering approach
+
+The project uses the **Built-in render pipeline**, and everything on screen is uGUI. The composite is therefore a **uGUI-compatible shader on the existing webcam `RawImage`**. It keeps Unity's UI stencil and clipping support and adds no draw call, render texture or camera. Alternatives were considered and rejected:
+
+* **A mask RenderTexture** drawn from a mesh needs an extra camera or a `CommandBuffer` render, plus a separate blur for the feather, and still gives no edge distance for the glow.
+* **URP Renderer Features** would mean switching the whole project to URP for no gain.
+
+### Mask representation: analytic signed-distance fields
+
+The mask is evaluated per pixel from a few uniforms, as a signed distance to the shape (negative inside):
+
+* **Ribbon:** a chain of 24 round segments whose radius interpolates along each segment (`FilterCMR_RibbonSDF`). Pixels outside the shape's bounding box, expanded by feather, glow and edge noise, skip the loop entirely.
+* **Quad:** the exact signed distance to a 4-vertex polygon (`FilterCMR_QuadSDF`, Inigo Quilez's formulation).
+* **Mask value:** `1 − smoothstep(−feather/2, +feather/2, d)`, so the edge is soft, resolution-independent and anti-aliased.
+* **Edge effects:** the distance also drives the inner cyan glow, the optional outline, and a noise displacement for an organic boundary.
+
+Both masks are evaluated, weighted by their fade value, and combined with `max`. That is how a point→peace switch becomes a cross-fade.
+
+The CPU has equivalents of both distance functions, using the same formulas (`RibbonMaskGenerator.SignedDistance`, `QuadrilateralMaskGenerator.SignedDistance`), used by the tests and the shader preview harness.
+
+### Coordinate mapping, with no double mirroring
+
+| Space | Definition | Used by |
+|---|---|---|
+| IMAGE `q` | 0–1 over the displayed image, top-left origin, y down, already mirrored by Python | landmarks, overlays |
+| ISO `P` | `(q.x · aspect, q.y)`; 1 unit = image height; isotropic | all mask geometry, dot grid |
+| QUAD `(s,t)` | RawImage-local 0–1, bottom-left origin | uGUI |
+| UV `(u,v)` | `uvRect.xy + uvRect.wh · (s,t)` | texture sampling |
+
+The shader inverts the RawImage `uvRect` to get `q = (s, 1 − t)` from the texture UV. That is the same rectangle-relative position the landmark overlay uses, whatever `uvRect` mirroring (tracker mirroring, the **M** flip, or a vertically flipped camera) is active. Mirroring therefore happens exactly once, in `uvRect`. The mask follows the landmarks by construction, and the texture is sampled back through `uvRect` (`UVFromImage`). This is covered by `MaskTests.UvRoundTripForAllDisplayOrientations` and by the shader harness's mirrored-display test.
+
+### Ribbon (TWO FINGER POINT)
+
+1. Inputs: both index tips (landmark 8) and each index finger's direction (landmark 6 → 8), in ISO space, each smoothed: exponential smoothing at 18/s plus a 6 image-heights/s speed limit that absorbs one-frame tracking jumps.
+2. The centre line is a **cubic Bézier** A → B. Each tangent is a blend of the chord and the finger direction, set by *Finger Influence*, so raised index fingers arch the strip and tilting a hand bends it. *Curve Strength* scales the tangents and *Curve Direction* adds a sideways bow. Tangents are kept pointing forward, so the curve can't loop back; 2,000 random cases are fuzz-tested.
+3. Width: *Ribbon Width* × a stretch factor (thinner when the hands are far apart) × a taper toward the tips × optional asymmetry × a slow "breathing" term, clamped to [*Minimum*, *Maximum*].
+4. *Noise Distortion* adds a travelling wave perpendicular to the chord. It is pinned to zero at both fingertips, so the ribbon always ends exactly on the fingers.
+5. The curve is sampled at 25 points, and each point (x, y, half-width) is uploaded as a `float4`.
+
+### Quad (TWO FINGER FRAME)
+
+1. Inputs: left index (8), left middle (12), right index (8), right middle (12), smoothed **by identity** before any ordering. Smoothing after ordering would blend unrelated corners whenever the order changes.
+2. **Ordering:** the convex hull of the four points, using Andrew's monotone chain. It always produces a simple, consistently wound polygon that cannot self-intersect or invert, whatever order the tips arrive in (a quad, or a triangle when one tip lies inside the others). This is fuzz-tested on 20,000 random configurations.
+3. The hull is rotated to start at the lowest source index, normally the left index tip. That ties the perspective grid's orientation to finger identity, so it doesn't spin from frame to frame.
+4. A **homography** (Heckbert's square→quad mapping) and its inverse let the halftone grid follow the quad's perspective (*Perspective Dots*). Polygons under 4·10⁻⁴ image-heights² count as invalid and are hidden.
+
+### Halftone and effects (in shader order)
+
+1. **Glitch:** horizontal displacement of random bands. *Frequency* sets how many bands and how often; *bursts* occasionally make them stronger. Scanline wobble is added, and everything is scaled by the mask so the edge stays continuous.
+2. **RGB split:** R, G and B are sampled at `+d`, `0` and `−d` along a direction. The offset slowly animates and is scaled by the mask.
+3. **Halftone:**
+   * A rotated grid of cells, in screen pixels, so dots stay round and keep the same size on any display. In quad mode with *Perspective Dots* on, the grid follows the quad's perspective instead.
+   * Each cell samples the image once, at its centre. A dot's area is proportional to the tone (radius ∝ √coverage), like real print. The edge is anti-aliased analytically over one pixel, so dots stay crisp without pixelation.
+   * Two styles: *Print* (blue ink on pale paper, dark = bigger dots) and *Screen* (light dots on navy, bright = bigger dots).
+   * Colour comes from a 5-stop tone ramp: navy, dark blue, electric blue, cyan, light cyan, white. The paper shows the webcam's tones through that ramp (*Tone Mix*), so the result has depth rather than a flat overlay.
+4. **Print texture and grain:** two-octave value noise for a paper-fibre texture, plus per-pixel hashed grain. Grain is re-seeded only at *Grain Fps* (24), or never (static), so it doesn't flicker.
+5. **Blend:** `lerp(webcam, effect, mask × opacity)`, plus the cyan glow and the optional outline.
+
+All effect maths runs in **gamma space**, converting in and out when the project uses Linear colour, so the look matches in both colour spaces. Colours are uploaded with `SetVector` as gamma values. Outside the mask the shader returns the sampled webcam pixel directly, with no conversion. The harness verifies this as pixel-identical (max difference 0) in Gamma and Linear.
+
+### Performance
+
+* **CPU, per frame:** about 150 multiply-adds for the ribbon, a 4-point hull and a 3×3 inverse, plus about 70 cached-ID material property sets. No allocations, no GameObjects created, no texture readbacks.
+* **GPU, outside the masks' bounding boxes:** two texture samples, the mapping maths, and an early return.
+* **GPU, inside:** up to 24 segment distances, and 2–6 texture samples (pixel and cell centre, ×3 with RGB split). When the two masks overlap during a cross-fade, the halftone is computed for both grids.
+* **Derivatives:** grid coordinates and their derivatives are computed before any divergent branch, so `fwidth` is well defined. Samples inside branches use `tex2Dlod`.
+* **UI:** the debug and settings panels update text at 10 Hz. The landmark and mask-debug meshes rebuild only while something is visible.
+
+### Known limitations
+
+* The composite has been compiled (glslang, all keyword variants) and executed on a software GPU, but **not yet in the Unity Editor**. Unity's own compiler (Metal on macOS) may still report something the harness can't see. The first open on your Mac is the real check: select the shader and look at its Inspector.
+* When a tip moves inside the other three, the frame becomes a **triangle**. That's correct and continuous, but the perspective dot grid then switches to the flat screen grid. The grid also changes orientation if the left index tip leaves the hull.
+* Forced **Ribbon/Quad** modes (keys 1 and 2) need both hands visible; they ignore the pose.
+* Inspector changes made in Play Mode revert when Play Mode ends, as with any Unity component.
+* A webcam that reports a non-zero `videoRotationAngle` (not the case on Macs) rotates the image but not the mask space.
 
 ## Project layout
 
@@ -140,8 +238,13 @@ UnityProject/
                      HandLandmarkVisualizer, HandConnectionVisualizer
         Camera/      WebcamController, WebcamDisplay
         Gestures/    GestureManager, GestureStateMachine, GestureType
-        UI/          DebugPanel, TrackingStatusUI, UIFactory
-      Tests/Editor/  NetworkingTests, GestureTests          FilterCMR.Tests.asmdef
+        UI/          DebugPanel, TrackingStatusUI, VisualSettingsPanel, UIFactory
+        Mask/        InteractiveMaskManager, RibbonMaskGenerator, QuadrilateralMaskGenerator,
+                     MaskGeometry, MaskCoordinateMapper, MaskSmoothing, MaskTransitions, MaskDebugVisualizer
+        Rendering/   VisualEffectController, WebcamCompositeController, CompositeUniformWriter, EffectValues
+      Shaders/       FILTERCMR_WebcamComposite.shader + FILTERCMR_Mask / _Halftone / _Common .cginc
+      Materials/     FILTERCMR_WebcamComposite.mat      (created by Setup Visual Effects)
+      Tests/Editor/  NetworkingTests, GestureTests, MaskTests, RenderingTests    FilterCMR.Tests.asmdef
       Scenes/        MainScene.unity            (created by the setup tool)
       Settings/      FilterCMRSettings.asset    (created by the setup tool)
       Materials/ Prefabs/ Textures/             (Milestone 3+)
@@ -150,4 +253,4 @@ UnityProject/
   ProjectSettings/ProjectVersion.txt 2022.3.62f1 (the rest is generated by Unity on first open)
 ```
 
-C# namespaces: `FilterCMR` (manager), `FilterCMR.Core`, `.Networking`, `.Tracking`, `.CameraInput`, `.Gestures`, `.UI`, `.EditorTools`. The camera namespace is `CameraInput`, not `Camera`, so that it doesn't hide `UnityEngine.Camera`.
+C# namespaces: `FilterCMR` (manager), `FilterCMR.Core`, `.Networking`, `.Tracking`, `.CameraInput`, `.Gestures`, `.Mask`, `.Rendering`, `.UI`, `.EditorTools`. The camera namespace is `CameraInput`, not `Camera`, so that it doesn't hide `UnityEngine.Camera`.

@@ -17,6 +17,7 @@ namespace UnityEngine {
   public class Component : Object {
     public GameObject gameObject => null; public Transform transform => null;
     public T GetComponent<T>() => default;
+    public T GetComponentInParent<T>() => default;
     public string tag { get; set; }
   }
   public class Behaviour : Component { public bool enabled { get; set; } public bool isActiveAndEnabled => true; }
@@ -57,7 +58,7 @@ namespace UnityEngine {
     public static implicit operator Vector4(Vector2 v) => default;
   }
   public struct Vector3 { public float x, y, z; public Vector3(float x, float y, float z) { this.x = x; this.y = y; this.z = z; } }
-  public struct Vector4 { public float x, y, z, w; }
+  public struct Vector4 { public float x, y, z, w; public Vector4(float x, float y, float z, float w) { this.x = x; this.y = y; this.z = z; this.w = w; } }
   public struct Rect : IEquatable<Rect> {
     public Rect(float x, float y, float width, float height) { this.x = x; this.y = y; this.width = width; this.height = height; }
     public float x { get; set; } public float y { get; set; } public float width { get; set; } public float height { get; set; }
@@ -75,6 +76,7 @@ namespace UnityEngine {
   public struct Color32 { public byte r, g, b, a; public Color32(byte r, byte g, byte b, byte a) { this.r = r; this.g = g; this.b = b; this.a = a; } }
   public static class ColorUtility { public static string ToHtmlStringRGB(Color color) => ""; }
   public struct Mathf {
+    public static float Clamp01(float value) => 0; public static float Max(float a, float b) => 0;
     public const float PI = 3.14159274F;
     public static float Exp(float p) => 0; public static float Abs(float f) => 0; public static float Cos(float f) => 0; public static float Sin(float f) => 0;
     public static int Max(int a, int b) => 0; public static float Repeat(float t, float length) => 0;
@@ -86,7 +88,7 @@ namespace UnityEngine {
   }
   public static class Time { public static float unscaledTime => 0; public static float unscaledDeltaTime => 0; }
   public static class Input { public static bool GetKeyDown(KeyCode key) => false; }
-  public enum KeyCode { C = 99, D = 100, H = 104, M = 109, R = 114 }
+  public enum KeyCode { Alpha0 = 48, Alpha1 = 49, Alpha2 = 50, LeftBracket = 91, RightBracket = 93, C = 99, D = 100, G = 103, H = 104, M = 109, P = 112, R = 114, S = 115, T = 116, V = 118, X = 120, Keypad0 = 256, Keypad1 = 257, Keypad2 = 258 }
   public enum UserAuthorization { WebCam = 1, Microphone = 2 }
   public static class Application {
     public static bool runInBackground { get; set; } public static bool isPlaying => true; public static bool isBatchMode => false;
@@ -117,7 +119,7 @@ namespace UnityEngine {
   public enum VerticalWrapMode { Truncate, Overflow }
   public sealed class CanvasRenderer : Component {}
   public enum RenderMode { ScreenSpaceOverlay, ScreenSpaceCamera, WorldSpace }
-  public sealed class Canvas : Behaviour { public RenderMode renderMode { get; set; } public int sortingOrder { get; set; } public bool pixelPerfect { get; set; } }
+  public sealed class Canvas : Behaviour { public RenderMode renderMode { get; set; } public int sortingOrder { get; set; } public bool pixelPerfect { get; set; } public float scaleFactor { get; set; } public Canvas rootCanvas => null; }
   public class Camera : Behaviour { public CameraClearFlags clearFlags { get; set; } public Color backgroundColor { get; set; } public bool orthographic { get; set; } }
   public enum CameraClearFlags { Skybox = 1, SolidColor = 2 }
   public sealed class AudioListener : Behaviour {}
@@ -128,6 +130,7 @@ namespace UnityEngine {
   public sealed class MinAttribute : PropertyAttribute { public MinAttribute(float min) {} }
   public sealed class RangeAttribute : PropertyAttribute { public RangeAttribute(float min, float max) {} }
   public sealed class DisallowMultipleComponent : Attribute {}
+  public sealed class HideInInspector : Attribute {}
   [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)] public sealed class RequireComponent : Attribute { public RequireComponent(Type t) {} }
   public sealed class DefaultExecutionOrder : Attribute { public DefaultExecutionOrder(int order) {} }
   public sealed class AddComponentMenu : Attribute { public AddComponentMenu(string menuName) {} }
@@ -153,6 +156,7 @@ namespace UnityEngine.UI {
   public abstract class Graphic : UIBehaviour {
     public virtual Color color { get; set; } public virtual bool raycastTarget { get; set; }
     public RectTransform rectTransform => null; public virtual void SetVerticesDirty() {}
+    public virtual Material material { get; set; }
     protected virtual void OnPopulateMesh(VertexHelper vh) {}
   }
   public abstract class MaskableGraphic : Graphic {}
@@ -178,3 +182,39 @@ namespace UnityEngine.UI {
   }
   public class GraphicRaycaster : MonoBehaviour {}
 }
+
+namespace UnityEngine {
+  public sealed class Shader : Object {
+    public static Shader Find(string name) => null; public bool isSupported => true;
+    public static int PropertyToID(string name) => 0;
+  }
+  public class Material : Object {
+    public Material(Shader shader) {} public Material(Material source) {}
+    public Shader shader { get; set; }
+    public void SetFloat(int nameID, float value) {} public void SetVector(int nameID, Vector4 value) {}
+    public void SetVectorArray(int nameID, Vector4[] values) {}
+  }
+}
+namespace UnityEngine.Events {
+  public delegate void UnityAction(); public delegate void UnityAction<T0>(T0 arg0);
+  public abstract class UnityEventBase {}
+  public class UnityEvent : UnityEventBase { public void AddListener(UnityAction call) {} }
+  public abstract class UnityEvent<T0> : UnityEventBase { public void AddListener(UnityAction<T0> call) {} }
+}
+namespace UnityEngine.UI {
+  using UnityEngine.EventSystems;
+  public struct ColorBlock { public Color normalColor { get; set; } public Color highlightedColor { get; set; } public Color pressedColor { get; set; } public Color selectedColor { get; set; } }
+  public class Selectable : UIBehaviour { public Graphic targetGraphic { get; set; } public ColorBlock colors { get; set; } }
+  public class Button : Selectable { public class ButtonClickedEvent : UnityEngine.Events.UnityEvent {} public ButtonClickedEvent onClick { get; set; } }
+  public class Slider : Selectable {
+    public class SliderEvent : UnityEngine.Events.UnityEvent<float> {}
+    public RectTransform fillRect { get; set; } public RectTransform handleRect { get; set; }
+    public float minValue { get; set; } public float maxValue { get; set; } public bool wholeNumbers { get; set; }
+    public SliderEvent onValueChanged { get; set; } public virtual void SetValueWithoutNotify(float input) {}
+  }
+  public static class DefaultControls {
+    public struct Resources { public Sprite standard; public Sprite background; public Sprite knob; }
+    public static GameObject CreateSlider(Resources resources) => null;
+  }
+}
+namespace UnityEngine { public sealed class Sprite : Object {} }

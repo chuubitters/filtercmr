@@ -92,8 +92,36 @@ checks = {
  "EditorSceneManager.SaveScene(Scene, string)": ([UCS], r"bool SaveScene\(Scene scene, .*string dstScenePath"),
  "EditorSceneManager.MarkSceneDirty": ([UCS], r"bool MarkSceneDirty\(Scene scene\)"),
  "NewSceneSetup.EmptyScene": ([UCS], r"EmptyScene"),
+ # Milestone 3/4
+ "Shader.Find(string)": ([UCS], r"public static Shader Find\(string name\)"),
+ "Shader.isSupported": ([UCS], r"extern public bool isSupported"),
+ "Shader.PropertyToID (thread-safe)": ([UCS], r"IsThreadSafe = true\)\] extern public static int PropertyToID\(string name\)"),
+ "Material(Shader) / Material(Material)": ([UCS], r"public Material\(Material source\)"),
+ "Material.shader": ([UCS], r"extern public Shader shader|public extern Shader shader"),
+ "Material.SetFloat(int,float)": ([UCS], r"public void SetFloat\(int nameID, float value\)"),
+ "Material.SetVector(int,Vector4)": ([UCS], r"public void SetVector\(int nameID, Vector4 value\)"),
+ "Material.SetVectorArray(int,Vector4[])": ([UCS], r"public void SetVectorArray\(int nameID, Vector4\[\] values\)"),
+ "Canvas.scaleFactor": ([UCS], r"public extern float scaleFactor"),
+ "Canvas.rootCanvas": ([UCS], r"public extern Canvas rootCanvas"),
+ "Component.GetComponentInParent<T>()": ([UCS], r"public T GetComponentInParent<T>\(\)"),
+ "HideInInspector": ([UCS], r"public sealed partial class HideInInspector|public sealed class HideInInspector|class HideInInspector"),
+ "KeyCode.Alpha0/1/2, Keypad0/1/2, LeftBracket, RightBracket": ([UCS], r"RightBracket\s*= 93"),
+ "KeyCode.Keypad2": ([UCS], r"Keypad2\s*= 258"),
+ "Mathf.Clamp01": ([UCS], r"public static float Clamp01\(float value\)"),
+ "EditorUtility.SetDirty": ([UCS], r"public static void SetDirty\(\[NotNull\] Object target\)|public static void SetDirty\(Object target\)|static extern void SetDirty\("),
 }
 ugui = {
+ "Graphic.material (virtual get/set)": r"public virtual Material material",
+ "Button.onClick / ButtonClickedEvent": r"public ButtonClickedEvent onClick",
+ "Selectable.colors": r"public ColorBlock\s+colors",
+ "Selectable.targetGraphic": r"public Graphic\s+targetGraphic",
+ "ColorBlock.normalColor/highlightedColor/pressedColor": r"public Color pressedColor",
+ "Slider.fillRect/handleRect": r"public RectTransform fillRect",
+ "Slider.minValue/maxValue/wholeNumbers": r"public bool wholeNumbers",
+ "Slider.onValueChanged (SliderEvent)": r"public SliderEvent onValueChanged",
+ "DefaultControls.CreateSlider(Resources)": r"public static GameObject CreateSlider\(Resources resources\)",
+ "DefaultControls.Resources": r"public struct Resources",
+
  "VertexHelper.AddVert(Vector3, Color32, uv0)": r"public void AddVert\(Vector3 position, Color32 color, Vector[24] uv0\)",
  "VertexHelper.AddTriangle": r"public void AddTriangle\(int idx0, int idx1, int idx2\)",
  "VertexHelper.currentVertCount": r"public int currentVertCount",
@@ -125,4 +153,17 @@ for k,(roots,pat) in checks.items():
 for k,pat in ugui.items():
     a=bool(g(U7,pat)); b=bool(g(U18,pat)); ok=a and b; bad+= not ok
     print(("OK  " if ok else "MISS"), "[uGUI 2018.4 %s / 7.0 %s]"%("y" if b else "n","y" if a else "n"), k)
+# Added after uGUI 2018.4 (2019.1+), so present in uGUI 1.0.0 shipped with 2022.3: check the 7.0 branch only.
+newer = {
+ "Slider.SetValueWithoutNotify (2019.1+)": r"public virtual void SetValueWithoutNotify\(float input\)",
+ "ColorBlock.selectedColor (2019.1+)": r"public Color selectedColor",
+}
+for k,pat in newer.items():
+    ok=bool(g(U7,pat)); bad+= not ok
+    print(("OK  " if ok else "MISS"), "[uGUI 7.0, added 2019.1]", k)
+# UnityEvent / UnityEvent<T0> are code-generated in the engine build and not published in UnityCsReference.
+# Evidence instead: uGUI itself (both branches) calls AddListener on UnityEvent<T> with a lambda.
+for k,pat in {"UnityEvent<T>.AddListener(UnityAction<T>) used by uGUI": r"\.AddListener\(",}.items():
+    ok=bool(g(U7,pat)) and bool(g(U18,pat)); bad+= not ok
+    print(("OK  " if ok else "MISS"), k)
 print("missing:",bad)

@@ -54,4 +54,4 @@ Run the tracker with the preview: `./run.sh`. In a second terminal run `python t
 
 **Milestone 2 (Unity integration):** see [UNITY_TESTING.md](UNITY_TESTING.md).
 
-Later: ribbon mask (M3) · polygon mask (M4) · halftone rendering (M5) · reset and full flow (M6–M7).
+**Milestones 3 + 4 (masks, halftone shader):** see [MILESTONE_3_4_TESTING.md](MILESTONE_3_4_TESTING.md).

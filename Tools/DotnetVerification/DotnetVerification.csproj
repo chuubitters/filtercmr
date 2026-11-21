@@ -25,7 +25,17 @@
     <Compile Include="$(Scripts)/Networking/VideoStreamCore.cs" />
     <Compile Include="$(Scripts)/Gestures/GestureType.cs" />
     <Compile Include="$(Scripts)/Gestures/GestureStateMachine.cs" />
+    <Compile Include="$(Scripts)/Mask/MaskCoordinateMapper.cs" />
+    <Compile Include="$(Scripts)/Mask/MaskGeometry.cs" />
+    <Compile Include="$(Scripts)/Mask/MaskSmoothing.cs" />
+    <Compile Include="$(Scripts)/Mask/MaskTransitions.cs" />
+    <Compile Include="$(Scripts)/Mask/RibbonMaskGenerator.cs" />
+    <Compile Include="$(Scripts)/Mask/QuadrilateralMaskGenerator.cs" />
+    <Compile Include="$(Scripts)/Rendering/EffectValues.cs" />
+    <Compile Include="$(Scripts)/Rendering/CompositeUniformWriter.cs" />
     <Compile Include="$(UnityTests)/NetworkingTests.cs" />
+    <Compile Include="$(UnityTests)/MaskTests.cs" />
+    <Compile Include="$(UnityTests)/RenderingTests.cs" />
     <Compile Include="$(UnityTests)/GestureTests.cs" />
   </ItemGroup>
 </Project>

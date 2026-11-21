@@ -7,7 +7,9 @@ using System.Text;
 using FilterCMR.CameraInput;
 using FilterCMR.Core;
 using FilterCMR.Gestures;
+using FilterCMR.Mask;
 using FilterCMR.Networking;
+using FilterCMR.Rendering;
 using FilterCMR.Tracking;
 using UnityEngine;
 using UnityEngine.UI;
@@ -23,13 +25,15 @@ namespace FilterCMR.UI
 
         const float Width = 520f;
         const float LabelWidth = 118f;
+        const float PanelHeight = 720f;
 
         static readonly string[] Labels =
         {
             "WEBCAM", "VIDEO SOURCE", "PY TRACKER", "PY CAMERA", "UDP :{0}", "VIDEO :{0}",
             "", "LEFT HAND", "RIGHT HAND", "GESTURE", "CANDIDATE", "",
+            "MASK MODE", "MASK", "HALFTONE", "EFFECTS", "SHADER", "",
             "L INDEX TIP", "R INDEX TIP", "L MIDDLE TIP", "R MIDDLE TIP", "",
-            "RENDER FPS", "LAST MESSAGE", "LANDMARKS",
+            "RENDER FPS", "LAST MESSAGE", "LANDMARKS", "MASK DEBUG",
         };
 
         Text _labels, _values, _warning;
@@ -48,7 +52,7 @@ namespace FilterCMR.UI
         public void Build()
         {
             var rt = (RectTransform)transform;
-            UIFactory.Anchor(rt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -72), new Vector2(Width, 560));
+            UIFactory.Anchor(rt, new Vector2(0, 1), new Vector2(0, 1), new Vector2(24, -72), new Vector2(Width, PanelHeight));
 
             var bg = UIFactory.GetOrAdd<Image>(gameObject);
             bg.color = Palette.WithAlpha(Palette.Navy, 0.9f);
@@ -69,19 +73,20 @@ namespace FilterCMR.UI
             tag.text = "M2 · HAND TRACKING · [D] HIDE";
 
             _labels = UIFactory.CreateText(transform, "Labels", 13, Palette.WithAlpha(Palette.LightBlue, 0.55f), TextAnchor.UpperLeft);
-            UIFactory.Stretch(_labels.rectTransform, 14, Width - 14 - LabelWidth, 38, 70);
+            UIFactory.Stretch(_labels.rectTransform, 14, Width - 14 - LabelWidth, 38, 150);
             _labels.horizontalOverflow = HorizontalWrapMode.Overflow;
 
             _values = UIFactory.CreateText(transform, "Values", 13, Palette.LightBlue, TextAnchor.UpperLeft);
-            UIFactory.Stretch(_values.rectTransform, 14 + LabelWidth, 12, 38, 70);
+            UIFactory.Stretch(_values.rectTransform, 14 + LabelWidth, 12, 38, 150);
             _values.horizontalOverflow = HorizontalWrapMode.Overflow;
 
             _warning = UIFactory.CreateText(transform, "Warning", 12, Palette.Warning, TextAnchor.LowerLeft);
-            UIFactory.Stretch(_warning.rectTransform, 14, 12, 470, 32);
+            UIFactory.Stretch(_warning.rectTransform, 14, 12, PanelHeight - 150, 50);
 
             Text footer = UIFactory.CreateText(transform, "Footer", 11, Palette.WithAlpha(Palette.LightBlue, 0.6f), TextAnchor.LowerLeft);
-            UIFactory.Stretch(footer.rectTransform, 14, 12, 520, 10);
-            footer.text = "[D] debug   [R] restart UDP   [H] landmarks   [C] camera   [M] flip video";
+            UIFactory.Stretch(footer.rectTransform, 14, 12, PanelHeight - 46, 8);
+            footer.text = "[D] debug  [R] restart UDP  [H] landmarks  [C] camera  [M] flip video  [V] mask debug\n" +
+                          "[1] ribbon  [2] quad  [0] off  [T] halftone  [G] grain  [X] glitch  [ ] [ ] intensity  [S] settings  [P] present";
 
             RefreshLabels(5065, 5066);
             if (_values.text.Length == 0) _values.text = "<color=#5E7BA8>— enter Play Mode —</color>";
@@ -234,6 +239,9 @@ namespace FilterCMR.UI
                 _sb.Append("\n\n");
             }
 
+            // MASK MODE / MASK / HALFTONE / EFFECTS / SHADER
+            MaskBlock(m);
+
             // FINGERTIPS
             Tip(g, Handedness.Left, HandLandmark.IndexTip);
             Tip(g, Handedness.Right, HandLandmark.IndexTip);
@@ -258,6 +266,10 @@ namespace FilterCMR.UI
 
             // LANDMARKS
             if (m.LandmarksVisible) Ok("VISIBLE"); else Dim("HIDDEN");
+            _sb.Append('\n');
+
+            // MASK DEBUG
+            if (m.MaskDebugVisible) Warn("ON (magenta = mask, markers = control points)"); else Dim("OFF  [V]");
 
             _values.text = _sb.ToString();
 
@@ -266,6 +278,68 @@ namespace FilterCMR.UI
             else if (disp != null && disp.AspectWarning.Length > 0) warn = disp.AspectWarning;
             else if (cam != null && disp != null && disp.ActiveSource == VideoSource.None && cam.StatusMessage.Length > 0) warn = cam.StatusMessage;
             if (_warning.text != warn) _warning.text = warn;
+        }
+
+        void MaskBlock(FilterCMRManager m)
+        {
+            InteractiveMaskManager mk = m.Masks;
+            VisualEffectController fx = m.Effects;
+            WebcamCompositeController comp = m.Composite;
+            if (mk == null)
+            {
+                Err("not set up: FILTER CMR > Setup Visual Effects");
+                _sb.Append("\n\n\n\n\n\n");
+                return;
+            }
+
+            // MASK MODE
+            if (mk.Mode == MaskMode.Off) Warn(MaskTransitions.Label(mk.Mode)); else Ok(MaskTransitions.Label(mk.Mode));
+            _sb.Append('\n');
+
+            // MASK
+            float rw = mk.RibbonWeight, qw = mk.QuadWeight;
+            if (rw <= 0f && qw <= 0f) Dim("none: normal webcam");
+            else
+            {
+                if (rw > 0f) { Ok("RIBBON"); _sb.Append(' ').Append(Mathf.RoundToInt(rw * 100)).Append('%'); }
+                if (rw > 0f && qw > 0f) _sb.Append("  ");
+                if (qw > 0f)
+                {
+                    Ok("QUAD"); _sb.Append(' ').Append(Mathf.RoundToInt(qw * 100)).Append("%  ").Append(mk.Quad.VertexCount).Append(" pts");
+                }
+            }
+            _sb.Append('\n');
+
+            // HALFTONE
+            if (fx == null) Err("missing VisualEffectController");
+            else
+            {
+                if (fx.halftoneEnabled) Ok("ON"); else Dim("OFF");
+                _sb.Append("  ").Append(Mathf.RoundToInt(fx.halftoneIntensity * 100)).Append("%  ")
+                   .Append(Mathf.RoundToInt(fx.dotSpacing)).Append(" px  ").Append(fx.dotShape.ToString().ToLowerInvariant())
+                   .Append("  ").Append(EffectValues.Label(fx.palette).ToLowerInvariant());
+            }
+            _sb.Append('\n');
+
+            // EFFECTS
+            if (fx != null)
+            {
+                Flag("RGB", fx.rgbSplitEnabled); Flag("GLITCH", fx.glitchEnabled); Flag("GRAIN", fx.grainEnabled);
+                _sb.Append(" opacity ").Append(Mathf.RoundToInt(fx.opacity * 100)).Append('%');
+            }
+            _sb.Append('\n');
+
+            // SHADER
+            if (comp == null) Err("no WebcamCompositeController");
+            else if (comp.IsActive) { Ok("OK"); _sb.Append("  image ").Append(Mathf.RoundToInt(comp.ImageHeightPixels)).Append(" px tall"); }
+            else Err(comp.Status);
+            _sb.Append("\n\n");
+        }
+
+        void Flag(string name, bool on)
+        {
+            if (on) Ok(name); else Dim(name.ToLowerInvariant());
+            _sb.Append("  ");
         }
 
         void HandLine(HandView h)

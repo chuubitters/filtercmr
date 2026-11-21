@@ -6,6 +6,7 @@ using System.Text;
 using FilterCMR.CameraInput;
 using FilterCMR.Core;
 using FilterCMR.Gestures;
+using FilterCMR.Mask;
 using FilterCMR.Networking;
 using FilterCMR.Tracking;
 using UnityEngine;
@@ -28,7 +29,18 @@ namespace FilterCMR.UI
 
         public FilterCMRManager Manager { get => manager; set => manager = value; }
 
-        void Awake() => Build();
+        bool _bound;
+
+        void Awake()
+        {
+            Build();
+            if (_bound || !Application.isPlaying) return;
+            _bound = true;
+            Transform bar = transform.Find("Top Bar");
+            bar.Find("Settings Button").GetComponent<Button>().onClick.AddListener(() => { if (manager != null) manager.ToggleSettingsPanel(); });
+            bar.Find("Debug Button").GetComponent<Button>().onClick.AddListener(() => { if (manager != null) manager.ToggleDebugPanel(); });
+            bar.Find("Present Button").GetComponent<Button>().onClick.AddListener(() => { if (manager != null) manager.SetPresentation(true); });
+        }
 
         public void Build()
         {
@@ -53,7 +65,20 @@ namespace FilterCMR.UI
             Text sub = UIFactory.CreateText(brt, "Subtitle", 11, Palette.WithAlpha(Palette.LightBlue, 0.7f), TextAnchor.MiddleLeft);
             UIFactory.Stretch(sub.rectTransform, 182, 0, 0, 0);
             sub.horizontalOverflow = HorizontalWrapMode.Overflow;
-            sub.text = "// HAND TRACKING  ·  BLUE HALFTONE CAMERA";
+            sub.text = "// INTERACTIVE HALFTONE CAMERA";
+
+            // Mouse access to the panels (the app stays usable without a keyboard).
+            string[] names = { "Settings Button", "Debug Button", "Present Button" };
+            string[] labels = { "SETTINGS", "DEBUG", "PRESENT" };
+            for (int i = 0; i < 3; i++)
+            {
+                Button b = UIFactory.CreateButton(brt, names[i], labels[i], 11, out _);
+                var r = (RectTransform)b.transform;
+                r.anchorMin = r.anchorMax = new Vector2(0, 0.5f);
+                r.pivot = new Vector2(0, 0.5f);
+                r.anchoredPosition = new Vector2(420 + i * 84, 0);
+                r.sizeDelta = new Vector2(78, 24);
+            }
 
             _status = UIFactory.CreateText(brt, "Status", 13, Palette.LightBlue, TextAnchor.MiddleRight);
             UIFactory.Stretch(_status.rectTransform, 0, 24, 0, 0);
@@ -97,6 +122,10 @@ namespace FilterCMR.UI
             Dot("CAM", videoOk ? Palette.OkTag : Palette.ErrorTag);
             Dot("TRK", trackerOk ? Palette.OkTag : (trk != null && trk.Connection == TrackerConnection.Waiting ? Palette.WarnTag : Palette.ErrorTag));
             Dot("UDP", udpOk ? Palette.OkTag : Palette.ErrorTag);
+            InteractiveMaskManager mk = m.Masks;
+            if (mk != null)
+                _sb.Append("MASK <color=").Append(mk.Mode == MaskMode.Off ? Palette.WarnTag : Palette.OkTag).Append('>')
+                   .Append(MaskTransitions.Label(mk.Mode)).Append("</color>    ");
             _sb.Append("<color=").Append(Palette.DimTag).Append(">").Append(_fps.ToString("0")).Append(" FPS</color>");
             Set(_status, _sb.ToString());
 
@@ -119,6 +148,8 @@ namespace FilterCMR.UI
             else if (trk.TrackerCameraStatus != Networking.CameraStatus.Ok) { hint = "TRACKER CAMERA " + trk.TrackerCameraStatus.ToString().ToUpperInvariant(); sub = "see the tracker terminal for details"; }
             else if (trk.HandCount == 0) hint = "RAISE BOTH HANDS";
             else if (trk.HandCount == 1) hint = "RAISE YOUR OTHER HAND";
+            else if (g != null && g.CurrentGesture == GestureType.None && m.Masks != null && m.Masks.Mode == MaskMode.Auto)
+                sub = "<color=" + Palette.DimTag + ">POINT BOTH INDEX FINGERS FOR A RIBBON  ·  TWO PEACE SIGNS FOR A FRAME</color>";
 
             if (!videoOk && cam != null && cam.StatusMessage.Length > 0 && m.Settings.cameraSource != CameraSourceMode.PythonStream)
                 sub = (sub.Length > 0 ? sub + "\n" : "") + "<color=" + Palette.WarnTag + ">CAMERA: " + cam.StatusMessage + "</color>";

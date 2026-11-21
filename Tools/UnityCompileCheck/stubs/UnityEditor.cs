@@ -14,6 +14,7 @@ namespace UnityEditor {
   public static class EditorUtility {
     public static bool DisplayDialog(string title, string message, string ok) => true;
     public static bool DisplayDialog(string title, string message, string ok, string cancel) => true;
+    public static void SetDirty(UnityEngine.Object target) {}
   }
   public static class AssetDatabase {
     public static T LoadAssetAtPath<T>(string assetPath) where T : UnityEngine.Object => null;

@@ -2,6 +2,8 @@
 
 **Editor:** Unity **2022.3.62f1** LTS · **Render pipeline:** Built-in (uGUI only in Milestone 2) · **Packages:** uGUI, Test Framework. No third-party packages.
 
+> **Milestones 3/4:** after the steps below, run **FILTER CMR → Setup Visual Effects**. See [MILESTONE_3_4_SETUP.md](MILESTONE_3_4_SETUP.md).
+
 ## 1. Install Unity
 
 1. Install **Unity Hub** from unity.com/download.

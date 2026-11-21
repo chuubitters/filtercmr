@@ -30,6 +30,24 @@ MonoImporter:
   assetBundleName: 
   assetBundleVariant: 
 """
+SHADER = """fileFormatVersion: 2
+guid: {guid}
+ShaderImporter:
+  externalObjects: {{}}
+  defaultTextures: []
+  nonModifiableTextures: []
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+"""
+SHADER_INCLUDE = """fileFormatVersion: 2
+guid: {guid}
+ShaderIncludeImporter:
+  externalObjects: {{}}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+"""
 ASMDEF = """fileFormatVersion: 2
 guid: {guid}
 AssemblyDefinitionImporter:
@@ -57,6 +75,10 @@ def main() -> int:
             tpl = SCRIPT
         elif p.suffix == ".asmdef":
             tpl = ASMDEF
+        elif p.suffix == ".shader":
+            tpl = SHADER
+        elif p.suffix in (".cginc", ".hlsl"):
+            tpl = SHADER_INCLUDE
         else:
             continue  # other asset types: let Unity create them
         meta = p.with_name(p.name + ".meta")
