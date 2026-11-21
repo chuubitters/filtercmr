@@ -6,7 +6,7 @@ Status key: ✅ automated · 🖐 manual (needs a webcam and hands) · ⏳ arriv
 
 ```bash
 cd HandTracking && source .venv/bin/activate
-python -m pytest -q tests          # 67 tests, < 2 s, no camera needed
+python -m pytest -q tests          # 74 tests, < 2 s, no camera needed
 python tools/check_setup.py        # environment: packages, model, MediaPipe, webcam, UDP
 ```
 
@@ -21,6 +21,9 @@ python tools/check_setup.py        # environment: packages, model, MediaPipe, we
 | UDP packets | `test_udp_and_config.py` | schema, size < 1500 B, clamping, NaN rejected, loopback round-trip, no listener = no crash |
 | Main loop | `test_main_loop.py` | fake camera + mocked MediaPipe → real UDP: frame packets, ordering, mirroring, `bye` |
 | CLI config | `test_udp_and_config.py` | flags and validation |
+| Video forwarding | `test_video_stream.py` | chunking within macOS's 9216-byte datagram limit, reassembly, raw (un-mirrored) frames, rate limit, `--stream-video` flags |
+| Main loop + video | `test_main_loop.py` | `--stream-video` sends chunks while tracking packets keep the exact v1 fields |
+| Fake tracker | `test_main_loop.py` | `tools/fake_tracker.py` sends valid packets and `bye` |
 
 The automated tests do **not** run the real MediaPipe neural network, because they can't contain real hand images. Real inference is covered by `check_setup.py` (blank frame) and by the manual tests below.
 
@@ -49,4 +52,6 @@ Run the tracker with the preview: `./run.sh`. In a second terminal run `python t
 
 ## Later milestones ⏳
 
-UDP connection status in Unity, landmark display (M2) · ribbon mask (M3) · polygon mask (M4) · halftone rendering (M5) · Unity reset and full flow (M6–M7). These sections will be added as each milestone lands.
+**Milestone 2 (Unity integration):** see [UNITY_TESTING.md](UNITY_TESTING.md).
+
+Later: ribbon mask (M3) · polygon mask (M4) · halftone rendering (M5) · reset and full flow (M6–M7).

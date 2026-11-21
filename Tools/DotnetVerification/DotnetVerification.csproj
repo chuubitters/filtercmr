@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!--
+    Optional, outside Unity: compiles the UnityEngine-free FILTER CMR sources
+    (protocol parser, UDP/video receivers, gesture state machine) together with
+    their Unity EditMode tests, and runs them plus end-to-end UDP checks against
+    the real Python sender. Requires the .NET 8 SDK and the HandTracking venv
+    (set FILTERCMR_PYTHON to its python).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Scripts>../../UnityProject/Assets/FILTERCMR/Scripts</Scripts>
+    <UnityTests>../../UnityProject/Assets/FILTERCMR/Tests/Editor</UnityTests>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(Scripts)/Networking/HandTrackingData.cs" />
+    <Compile Include="$(Scripts)/Networking/HandDataParser.cs" />
+    <Compile Include="$(Scripts)/Networking/UdpReceiverCore.cs" />
+    <Compile Include="$(Scripts)/Networking/VideoStreamCore.cs" />
+    <Compile Include="$(Scripts)/Gestures/GestureType.cs" />
+    <Compile Include="$(Scripts)/Gestures/GestureStateMachine.cs" />
+    <Compile Include="$(UnityTests)/NetworkingTests.cs" />
+    <Compile Include="$(UnityTests)/GestureTests.cs" />
+  </ItemGroup>
+</Project>

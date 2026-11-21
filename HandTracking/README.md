@@ -20,6 +20,9 @@ python tools/udp_monitor.py   # see what Unity receives (in a second terminal, v
 | `config.py` | every option and its CLI flag |
 | `tools/udp_monitor.py` | UDP listener / stand-in for Unity |
 | `tools/check_setup.py` | environment self-test |
+| `tools/fake_tracker.py` | synthetic animated hands (+ optional video) through the real encoder, for testing Unity without a camera |
+| `video_stream.py` | optional JPEG frame forwarding to Unity (`--stream-video`, port 5066) |
+| `synthetic.py` | synthetic hand landmarks (tests and fake tracker) |
 | `tests/` | pytest suite (`python -m pytest -q tests`) |
 
 ## Useful options
@@ -37,6 +40,9 @@ python tools/udp_monitor.py   # see what Unity receives (in a second terminal, v
 --no-mirror                  send un-mirrored coordinates
 --swap-handedness            if Left/Right come out inverted
 --udp-host / --udp-port      target (default 127.0.0.1:5065)
+--stream-video               also forward camera frames to Unity on UDP 5066 (fallback when
+                             Unity cannot open the camera while the tracker uses it)
+--video-port / --video-width / --video-quality   (default 5066 / 640 / 70)
 --no-preview, --verbose
 ```
 

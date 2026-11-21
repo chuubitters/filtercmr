@@ -18,6 +18,7 @@ from camera import CameraStatus, CameraStream
 from config import TrackerConfig
 from hand_detector import HandDetector, HandTrack
 from udp_sender import UdpSender, build_packet
+from video_stream import VideoStreamer
 
 log = logging.getLogger("filtercmr")
 
@@ -51,6 +52,12 @@ def run(cfg: TrackerConfig) -> int:
     detector = HandDetector(cfg)
     sender = UdpSender(cfg.udp_host, cfg.udp_port)
     fps = RateMeter()
+    streamer = None
+    if cfg.stream_video:
+        streamer = VideoStreamer(cfg.udp_host, cfg.video_port, cfg.video_width, cfg.video_quality,
+                                 max_fps=cfg.capture_fps)
+        log.info("video forwarding on udp://%s:%d (%dpx, q%d)", cfg.udp_host, cfg.video_port,
+                 cfg.video_width, cfg.video_quality)
 
     preview = cfg.preview
     if preview:
@@ -133,6 +140,8 @@ def run(cfg: TrackerConfig) -> int:
                 )
             )
             last_send = done
+            if streamer is not None:
+                streamer.send(frame.image, done)
 
             if cfg.verbose and done - last_stats > 5.0:
                 last_stats = done
@@ -187,6 +196,8 @@ def run(cfg: TrackerConfig) -> int:
         except Exception:
             pass
         sender.close()
+        if streamer is not None:
+            streamer.close()
         detector.close()
         camera.stop()
         if preview:

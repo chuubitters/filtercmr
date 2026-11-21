@@ -6,7 +6,7 @@
 |---|---|---|
 | macOS | 12+ | Apple Silicon recommended |
 | Python | 3.9–3.12 (Intel) / 3.9+ (Apple Silicon) | `brew install python@3.12` |
-| Unity | any Unity 6 release with URP (6000.0 LTS or newer) | needed from Milestone 2 |
+| Unity | **2022.3.62f1 LTS** | via Unity Hub; see [UNITY_SETUP.md](UNITY_SETUP.md) |
 | Webcam | built-in or USB | |
 | Git LFS | optional | `brew install git-lfs && git lfs install` (for future binary assets) |
 
@@ -48,6 +48,8 @@ cd HandTracking
 ./run.sh --help               # every option
 ```
 
+Close `udp_monitor.py` before starting Unity: only one program can listen on port 5065.
+
 Preview keys: **Q** quit · **R** reset tracking · **M** toggle mirror · **S** toggle smoothing · **H** swap Left/Right.
 
 In a second terminal, see exactly what Unity will receive:
@@ -57,10 +59,22 @@ cd HandTracking && source .venv/bin/activate
 python tools/udp_monitor.py
 ```
 
-## 3. Unity project (Milestone 2, not yet available)
+## 3. Unity project
 
-Milestone 2 adds the Unity scripts plus an Editor setup menu. The plan is:
-1. Open Unity Hub → **Add → Add project from disk** → choose `filtercmr/UnityProject`, and pick your installed Unity 6 editor.
-2. Unity generates `ProjectSettings/` and `Packages/` for your exact version; the URP package and scene are configured by the setup menu.
+Follow [UNITY_SETUP.md](UNITY_SETUP.md). In short: Unity Hub → **Add project from disk** → `filtercmr/UnityProject` (2022.3.62f1) → accept **Create Main Scene** → start `./run.sh` → press **Play**.
 
-These steps will be finalised and tested in Milestone 2.
+## 4. If Unity can't use the camera while the tracker runs
+
+Some Macs or cameras don't allow two apps to use the camera at once. Then let the tracker forward its frames:
+
+```bash
+./run.sh --stream-video        # frames go to Unity on UDP 5066; tracking is unchanged on 5065
+```
+
+In Unity, set **Camera Source = Python Stream** (settings asset). The check is in [UNITY_TESTING.md](UNITY_TESTING.md#camera-sharing-check).
+
+## 5. Testing Unity without a camera
+
+```bash
+python tools/fake_tracker.py --stream-video     # synthetic animated hands + video
+```

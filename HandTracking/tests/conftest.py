@@ -1,54 +1,14 @@
-import math
 import sys
 from pathlib import Path
 from types import SimpleNamespace
 
-import numpy as np
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-ASPECT = 16 / 9
+from synthetic import ASPECT, make_hand  # noqa: E402  (re-exported for tests)
 
-
-def make_hand(ext=(False, True, False, False, False), angle_deg=0.0, center=(0.5, 0.6), scale=0.12, aspect=ASPECT):
-    """Synthetic 21-landmark hand in normalised image coordinates.
-
-    Built in an isotropic frame (unit = hand size, y down, fingers pointing
-    up), rotated by ``angle_deg`` and mapped into [0,1] image space.
-    """
-    up = np.array([0.0, -1.0])
-    down = -up
-    p = np.zeros((21, 2))
-    p[0] = (0, 0)
-    # thumb
-    p[1] = (-0.25, -0.2)
-    p[2] = (-0.45, -0.4)
-    if ext[0]:
-        p[3], p[4] = (-0.6, -0.55), (-0.85, -0.75)
-    else:
-        p[3], p[4] = (-0.4, -0.6), (-0.1, -0.65)
-    mcps = {5: (-0.3, -1.0), 9: (-0.1, -1.05), 13: (0.1, -1.0), 17: (0.3, -0.9)}
-    for finger, (mcp_i, mcp) in enumerate(mcps.items(), start=1):
-        mcp = np.array(mcp)
-        p[mcp_i] = mcp
-        if ext[finger]:
-            pip = mcp + up * 0.4
-            dip = pip + up * 0.25
-            tip = dip + up * 0.2
-        else:
-            pip = mcp + up * 0.3
-            dip = pip + down * 0.2
-            tip = dip + down * 0.15
-        p[mcp_i + 1], p[mcp_i + 2], p[mcp_i + 3] = pip, dip, tip
-
-    a = math.radians(angle_deg)
-    rot = np.array([[math.cos(a), -math.sin(a)], [math.sin(a), math.cos(a)]])
-    p = p @ rot.T * scale
-    out = np.zeros((21, 3))
-    out[:, 0] = (center[0] * aspect + p[:, 0]) / aspect
-    out[:, 1] = center[1] + p[:, 1]
-    return out
+__all__ = ["ASPECT", "make_hand", "fake_result"]
 
 
 def fake_result(hands):

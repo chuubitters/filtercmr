@@ -66,6 +66,12 @@ class TrackerConfig:
     # Heartbeat rate (Hz) used when no camera frames are available.
     heartbeat_hz: float = 5.0
 
+    # --- optional video forwarding (fallback when Unity cannot open the camera)
+    stream_video: bool = False
+    video_port: int = 5066
+    video_width: int = 640
+    video_quality: int = 70
+
     # --- debug ----------------------------------------------------------
     preview: bool = True
     verbose: bool = False
@@ -94,6 +100,12 @@ class TrackerConfig:
             raise ValueError("udp_port must be 1-65535")
         if self.tracking_width < 64:
             raise ValueError("tracking_width must be >= 64")
+        if not 1 <= self.video_port <= 65535 or self.video_port == self.udp_port:
+            raise ValueError("video_port must be 1-65535 and differ from udp_port")
+        if not 10 <= self.video_quality <= 100:
+            raise ValueError("video_quality must be 10-100")
+        if self.video_width < 64:
+            raise ValueError("video_width must be >= 64")
         if self.hand_hold_ms < 0:
             raise ValueError("hand_hold_ms must be >= 0")
         self.model_path = Path(self.model_path)
@@ -143,6 +155,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
     net.add_argument("--udp-host", type=str, help=f"Unity host (default {d.udp_host})")
     net.add_argument("--udp-port", type=int, help=f"Unity UDP port (default {d.udp_port})")
     net.add_argument("--heartbeat-hz", type=float, help=f"heartbeat rate without camera (default {d.heartbeat_hz})")
+
+    vid = p.add_argument_group("video forwarding (Unity camera fallback)")
+    _bool_flag(vid, "stream-video", f"send JPEG camera frames to Unity (default {d.stream_video})")
+    vid.add_argument("--video-port", type=int, help=f"UDP port for frames (default {d.video_port})")
+    vid.add_argument("--video-width", type=int, help=f"frame width sent (default {d.video_width})")
+    vid.add_argument("--video-quality", type=int, help=f"JPEG quality 10-100 (default {d.video_quality})")
 
     dbg = p.add_argument_group("debug")
     _bool_flag(dbg, "preview", f"show OpenCV debug window (default {d.preview})")

@@ -1,65 +1,153 @@
 # Architecture
 
-FILTER CMR is two cooperating processes on the same Mac:
+FILTER CMR is two cooperating processes on the same Mac. Python tracks hands; Unity (2022.3.62f1 LTS) displays the camera, interprets gestures and draws everything.
+
+## Data flow
 
 ```
-┌────────────────────── HandTracking/ (Python) ──────────────────────┐
-│ camera.py         capture thread, newest-frame-wins, auto-reopen   │
-│      │ BGR frame (un-mirrored)                                     │
-│ hand_detector.py  downscale → MediaPipe HandLandmarker (VIDEO)     │
-│                   → mirror x → Left/Right resolution               │
-│                   → One Euro smoothing → hold / drop on loss       │
-│ finger_state.py   advisory finger-extension + pose hint            │
-│ udp_sender.py     JSON packet → UDP 127.0.0.1:5065                 │
-│ debug_view.py     OpenCV preview (verification only)               │
-└────────────────────────────────┬───────────────────────────────────┘
-                                 │ UDP (see UDP_PROTOCOL.md)
-┌────────────────────────────────▼──────── UnityProject/ (Unity 6) ──┐
-│ Scripts/HandTracking  UDP receiver thread, tracker/hand timeouts   │  M2
-│ Scripts/Camera        WebCamTexture, mirroring, aspect handling    │  M2
-│ Scripts/Gesture       index-point / two-finger detection + hold    │  M3–M4
-│ Scripts/Interaction   ribbon + convex quad builders                │  M3–M4
-│ Scripts/Rendering     mask RT + halftone composite (URP)           │  M3–M5
-│ Shaders/              halftone, mask, glitch/RGB split             │  M5
-│ Scripts/UI            status, controls, start/reset flow           │  M6
-│ Editor/               one-click scene/material setup + validation  │  M2+
-└────────────────────────────────────────────────────────────────────┘
+ ┌──────────────────────────── HandTracking/ (Python 3) ─────────────────────────────┐
+ │                                                                                   │
+ │  webcam ──► camera.py ──► hand_detector.py ──────────► finger_state.py            │
+ │  (AVFoundation)  newest     MediaPipe HandLandmarker     per-hand pose:           │
+ │                  frame      mirror x · Left/Right        point/peace/open/fist/   │
+ │                  wins       One Euro · hold/drop         other  (+ ext flags)     │
+ │                    │                    │                                         │
+ │                    │                    ▼                                         │
+ │                    │            udp_sender.py ──── JSON ── UDP 127.0.0.1:5065 ─────┼──┐
+ │                    │            frame / heartbeat / bye                            │  │
+ │                    ▼                                                               │  │
+ │            video_stream.py  (only with ./run.sh --stream-video)                    │  │
+ │            JPEG → ≤8 kB chunks ─────────────────────── UDP 127.0.0.1:5066 ─────────┼──┼──┐
+ └───────────────────────────────────────────────────────────────────────────────────┘  │  │
+                                                                                        │  │
+ ┌──────────────────────────── UnityProject/ (Unity 2022.3) ─────────────────────────┐  │  │
+ │                                                                                   │  │  │
+ │  background thread                         main thread                            │  │  │
+ │  ┌────────────────────┐  latest-wins      ┌──────────────────────┐                │  │  │
+ │  │ UdpReceiverCore    │◄──────────────────┼──────────────────────┼────────────────┼──┘  │
+ │  │  Socket.Receive    │  copy under lock  │ UDPReceiver          │                │     │
+ │  │  HandDataParser    ├──────────────────►│  (MonoBehaviour)     │                │     │
+ │  │  (zero-alloc JSON) │                   └──────────┬───────────┘                │     │
+ │  └────────────────────┘                              ▼                            │     │
+ │                                           HandTrackingManager                     │     │
+ │                                            connection: waiting/connected/lost/    │     │
+ │                                            stopped · HandView ×2 (display-smoothed)│    │
+ │                                                      │                            │     │
+ │                          ┌───────────────────────────┼──────────────────┐         │     │
+ │                          ▼                           ▼                  ▼         │     │
+ │                  GestureManager            HandConnectionVisualizer   DebugPanel  │     │
+ │                  GestureStateMachine       HandLandmarkVisualizer     TrackingStatusUI │
+ │                  (combines Python poses;   (procedural UI meshes,                 │     │
+ │                   confirm/release timers)   one per overlay)                      │     │
+ │                                                      ▲                            │     │
+ │  WebcamController ── WebCamTexture ─┐                │ child, stretched           │     │
+ │  VideoStreamReceiver ◄──────────────┼── Texture ─► WebcamDisplay (RawImage +      │     │
+ │   (VideoReceiverCore thread ◄───────┼──────────────  AspectRatioFitter, uvRect    │◄────┘
+ │    + VideoFrameAssembler)           │                mirror) ── Hand Overlay      │
+ │                                     └─ chosen by Camera Source: Auto/Unity/Python │
+ └───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Why this split
+## Responsibilities
 
-* **Python + MediaPipe** gives production-quality 21-point hand tracking without native Unity CV plugins.
-* **Unity** owns everything visual and every interaction decision, so the tracker stays a dumb, restartable sensor.
-* **UDP on localhost** has negligible latency, no connection state, and survives either side restarting.
+| Concern | Owner | Where |
+|---|---|---|
+| Webcam capture for tracking, hand landmarks, smoothing, per-hand pose | Python | `HandTracking/` |
+| Transport | UDP JSON, port 5065 | `udp_sender.py` → `Networking/UdpReceiverCore.cs` |
+| Socket + JSON parsing off the main thread | Unity background thread | `UdpReceiverCore`, `HandDataParser` |
+| Connection state, timeouts, hand presence | Unity main thread | `Tracking/HandTrackingManager.cs` |
+| Two-hand gesture (point / frame) | Unity, **from Python's per-hand poses** | `Gestures/GestureStateMachine.cs` |
+| Camera image on screen | Unity | `Camera/WebcamController.cs`, `Camera/WebcamDisplay.cs` |
+| Landmark overlay | Unity | `Tracking/HandLandmarkVisualizer.cs`, `HandConnectionVisualizer.cs` |
+| Debug / status UI, shortcuts | Unity | `UI/`, `Core/FilterCMRManager.cs` |
+| Scene creation | Unity Editor | `Assets/Editor/FILTERCMRSetup.cs` |
 
-## Key decisions
+### No second gesture classifier
 
-**Detect on the raw frame, mirror the output.** The installed MediaPipe Tasks API documents that Left/Right refer to the subject's own hands on an un-mirrored image, and that mirroring the input inverts them. The tracker therefore never flips the image it feeds to MediaPipe. It mirrors only the landmark x-coordinates (`--mirror`, on by default). `--swap-handedness` is a safety valve if a given MediaPipe build behaves differently. TESTING.md has a 10-second check.
+Finger geometry is classified once, in Python (`finger_state.classify_pose` → `pose`). Unity's `GestureStateMachine` only combines the two hands' poses:
 
-**Duplicate handedness.** MediaPipe sometimes labels both hands the same. The tracker then assigns labels by screen position: in a mirrored view the user's right hand is on the screen's right. Each packet carries at most one Left and one Right.
+| Left pose | Right pose | Gesture |
+|---|---|---|
+| `point` | `point` | **TWO FINGER POINT** |
+| `peace` | `peace` | **TWO FINGER FRAME** |
+| anything else / a hand missing | | none |
 
-**Newest frame wins.** The capture thread overwrites a single slot, and the tracker always processes the newest frame. When detection is slower than the camera, frames are dropped rather than queued, so latency stays bounded.
+It then debounces the result over time. The gesture activates after both hands hold the poses for `gestureConfirmSeconds` (0.2 s). It survives dropouts shorter than `gestureReleaseSeconds` (0.25 s). Hands in `held` state (briefly lost by MediaPipe) can keep a gesture alive but cannot start one.
 
-**Tracking rate is separate from render rate.** Python runs at camera rate, which is usually 30 FPS on Mac webcams. Unity renders at display rate and reads the latest packet each frame (M2).
+## Threading and allocation
 
-**Configurable tracking resolution.** Frames are downscaled to `--tracking-width` (default 640 px) before inference. Landmarks are normalised, so this trades accuracy for speed without changing coordinates.
+* **Receive thread** (one per socket): it blocks on `Socket.Receive` with a 250 ms timeout so `Stop()` is always noticed. It parses into a private, pre-allocated `TrackingMessage`, then copies it into a pending slot under a lock. Older unread messages are overwritten, so the newest always wins.
+* **Main thread**: `TryGetLatest` copies the pending slot out under the same lock. Both copies are fixed-size arrays, so nothing is allocated per packet and the main thread never parses JSON or touches a socket.
+* **Cleanup**: `OnDisable`, `OnDestroy` and `OnApplicationQuit` all call `Stop()`, which closes the socket, joins the thread (1 s timeout) and frees the port. Leaving Play Mode triggers `OnDisable`, so nothing outlives Play Mode. The integration test verifies the port can be re-bound right after `Stop()`.
+* **Sequence numbers**: duplicates and reordered packets are dropped. A jump back of more than 1000, a `bye`, or more than 1 s of silence resets the sequence so a restarted tracker is accepted immediately.
+* **Rendering**: each overlay is a single `MaskableGraphic` that rebuilds one mesh per frame while hands are visible. Each hand uses fewer than 1,000 vertices, and no GameObjects are created or destroyed at runtime.
+* **UI text**: refreshed at 10 Hz. That is the only per-frame-ish allocation in the steady state.
 
-**Smoothing.** A vectorised One Euro Filter smooths all 63 coordinates per hand: strong smoothing when still, low lag when moving. It is reset whenever a hand is lost, so a re-appearing hand doesn't slide in from its old position.
+## Coordinates and alignment
 
-**Loss and recovery.**
+Python sends normalised image coordinates (0–1, origin top-left, y down). When `cam.mirrored` is true they are already mirrored.
+
+1. Both video sources (Unity `WebCamTexture` and the Python stream) deliver the **raw, un-mirrored** camera image.
+2. `WebcamDisplay` mirrors the image via `RawImage.uvRect = (1,0,-1,1)` **exactly when the tracker mirrors**, so image and coordinates use the same convention. The **M** key adds an extra flip if a particular camera driver already mirrors.
+3. An `AspectRatioFitter` keeps the image at the texture's aspect ratio, letterboxed by default (`fillScreen` crops instead). The image is never stretched.
+4. The landmark overlay is a child RectTransform stretched over the image, so `(x, y)` maps to `(xMin + x·w, yMax − y·h)` at any window size.
+5. Before any video arrives, the overlay takes the tracker camera's aspect ratio from `cam.w/h`, so landmarks are still placed correctly.
+6. If the video and the tracker camera have different aspect ratios (more than 2 %), the debug panel shows a warning, because the two would crop differently.
+
+## Camera access: Unity and Python at the same time
+
+Both processes need the webcam. macOS often lets several apps read one camera, but that couldn't be verified from the development machine, so the code doesn't assume it. There are three modes (`ApplicationSettings.cameraSource`):
+
+| Mode | Behaviour |
+|---|---|
+| **Auto** (default) | Uses Unity `WebCamTexture`. If it delivers no frames (start timeout, error, stall) and Python frames are arriving on 5066, it shows those instead, and stops retrying the webcam so it doesn't compete with the tracker for the camera. |
+| **UnityWebcam** | Only `WebCamTexture`. The video receiver is never started. |
+| **PythonStream** | Unity never opens the camera. It only shows frames from `./run.sh --stream-video`. This alignment is exact by construction, because the frames are the ones that were tracked. |
+
+**Frame forwarding protocol (port 5066)** is additive and opt-in. The tracking messages on 5065 are unchanged. Each JPEG frame (640 px wide, quality 70 by default) is split into datagrams of a 20-byte header plus ≤ 8000 bytes of payload. That stays under macOS's default 9216-byte UDP datagram limit. A frame with any missing chunk is discarded. Details are in [UDP_PROTOCOL.md](UDP_PROTOCOL.md#video-forwarding-port-5066).
+
+How to find out which mode your Mac needs: [UNITY_TESTING.md](UNITY_TESTING.md#camera-sharing-check).
+
+## Failure handling
+
 | Failure | Behaviour |
 |---|---|
-| Hand missing ≤ `--hand-hold-ms` (150 ms) | Sent with `state:"held"` and its last pose |
-| Hand missing longer | Dropped; filter reset |
-| No camera frames for `--camera-timeout-s` | Camera reopened with exponential backoff (0.5 → 5 s); heartbeats report `cam.status` |
-| 5 consecutive MediaPipe errors | Landmarker closed and recreated on the next frame |
-| Unity not running | Packets dropped silently; tracker keeps running |
-| Tracker quits | Sends `bye`; Unity also times out after 1 s |
+| Tracker not started | Status "START THE TRACKER", connection `Waiting` |
+| Tracker quits cleanly | `bye` → `Stopped` immediately; hands cleared |
+| Tracker crashes / packets stop | After `trackerTimeoutSeconds` (1 s) → `Lost`; hands cleared |
+| Tracker restarts | First packet reconnects (sequence reset rules above) |
+| Malformed / truncated / unknown-version JSON | Dropped and counted ("bad" in the debug panel); the reason is kept |
+| Port 5065 already in use (e.g. `udp_monitor.py`) | Receiver state `Error` with an explanation; **R** retries |
+| A hand missing | That hand's overlay disappears; a gesture survives ≤ 0.25 s gaps |
+| Webcam permission denied / none / busy / stalled / unplugged | Status message, automatic retry every `cameraRetrySeconds`; restart when stalled |
+| Window loses focus | `Application.runInBackground = true`, so it keeps running |
 
-## Open question for Milestone 2: camera sharing
+## Rendering pipeline
 
-Both processes need the webcam: Python for tracking, Unity (`WebCamTexture`) for display. macOS generally lets several apps read the same camera at once, but this has to be verified on the target Mac in M2. If it fails, the fallback is for Python to forward JPEG frames to Unity on a second local port. Both processes should also request the same resolution, because a different aspect ratio crops differently and misaligns the overlays. Packets carry `cam.w`/`cam.h` so Unity can detect that.
+Milestone 2 renders with uGUI on the Built-in Render Pipeline and doesn't need URP. The halftone shader and masks arrive in Milestone 3. The render pipeline (URP or Built-in) will be decided there, and nothing in M2 depends on it.
 
-## Unity project files
+## Project layout
 
-Unity 6 has several concurrent release lines (6.0 LTS, 6.3 LTS, …), and `ProjectSettings/` and `Packages/manifest.json` are tied to the exact editor version. Rather than guess, Milestone 2 generates them with your installed editor (see INSTALLATION.md). The `Assets/` folder structure is already in place.
+```
+UnityProject/
+  Assets/
+    FILTERCMR/
+      Scripts/                       FilterCMR.Runtime.asmdef
+        Core/        FilterCMRManager, ApplicationSettings, Palette
+        Networking/  UDPReceiver, UdpReceiverCore, HandDataParser, HandTrackingData,
+                     VideoStreamReceiver, VideoStreamCore
+        Tracking/    HandTrackingManager, HandView, HandSkeleton, HandGraphicBase,
+                     HandLandmarkVisualizer, HandConnectionVisualizer
+        Camera/      WebcamController, WebcamDisplay
+        Gestures/    GestureManager, GestureStateMachine, GestureType
+        UI/          DebugPanel, TrackingStatusUI, UIFactory
+      Tests/Editor/  NetworkingTests, GestureTests          FilterCMR.Tests.asmdef
+      Scenes/        MainScene.unity            (created by the setup tool)
+      Settings/      FilterCMRSettings.asset    (created by the setup tool)
+      Materials/ Prefabs/ Textures/             (Milestone 3+)
+    Editor/          FILTERCMRSetup.cs                       FilterCMR.Editor.asmdef
+  Packages/manifest.json             uGUI + Test Framework + built-in modules
+  ProjectSettings/ProjectVersion.txt 2022.3.62f1 (the rest is generated by Unity on first open)
+```
+
+C# namespaces: `FilterCMR` (manager), `FilterCMR.Core`, `.Networking`, `.Tracking`, `.CameraInput`, `.Gestures`, `.UI`, `.EditorTools`. The camera namespace is `CameraInput`, not `Camera`, so that it doesn't hide `UnityEngine.Camera`.

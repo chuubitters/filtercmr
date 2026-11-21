@@ -2,6 +2,8 @@
 
 **Version:** 1  ·  **Transport:** UDP, one JSON object per datagram  ·  **Default target:** `127.0.0.1:5065`
 
+Reference implementations: sender `HandTracking/udp_sender.py`, receiver `UnityProject/Assets/FILTERCMR/Scripts/Networking/HandDataParser.cs` (tested against packets produced by the sender).
+
 The tracker is the only sender; Unity only listens. UDP is fire-and-forget: packets may be dropped or (off-loopback) reordered. Receivers must use `seq` to ignore stale packets and must never block waiting for one.
 
 ## Message types
@@ -72,8 +74,33 @@ Index of landmark *i*, axis *a* (0=x, 1=y, 2=z) in `lm`: `i * 3 + a`.
 3. Ignore packets with an unknown `v` or malformed JSON; count them for the debug overlay.
 4. **Tracker timeout:** no packet for 1 s → "tracker offline". Any packet → back online.
 5. **Hand timeout:** a hand is present only while it appears in the latest packet. `held` hands may be drawn but should not start a new gesture.
-6. `ext` / `pose` are hints for debugging. Gesture decisions (with hold-time verification) are made in Unity from `lm`.
+6. `pose` is the authoritative per-hand classification (made by Python). Unity combines the two hands' poses into the two-hand gestures and debounces them over time; it does not re-classify finger geometry. `ext` is informational.
 
 ## Size
 
 A two-hand `frame` is roughly 1–1.5 kB, under a single Ethernet MTU, so the protocol also works across a LAN. The sender refuses anything over 8 kB.
+
+## Video forwarding (port 5066)
+
+This is optional and off by default. It's enabled with `./run.sh --stream-video`. It is a fallback for Macs where Unity can't open the webcam while the tracker is using it. It is a **separate** stream; the JSON messages above are unchanged.
+
+| | |
+|---|---|
+| Port | `--video-port`, default **5066** (must differ from the tracking port) |
+| Content | Raw camera frame (**not** mirrored), JPEG, `--video-width` (640) px wide, `--video-quality` (70) |
+| Rate | At most the capture FPS, sent right after each tracking packet |
+| Datagram | 20-byte big-endian header + ≤ 8000 bytes of JPEG (fits macOS's default 9216-byte UDP limit) |
+
+```
+offset size  field
+0      4     magic "FCV1"
+4      4     frame_id   uint32, +1 per frame (wraps)
+8      2     index      uint16, chunk index 0..count-1
+10     2     count      uint16, chunks in this frame
+12     4     total_len  uint32, JPEG size in bytes
+16     2     width      uint16, frame width
+18     2     height     uint16, frame height
+20     …     payload    bytes [index·8000, index·8000 + len) of the JPEG
+```
+
+Receiver rules: chunks may arrive in any order, and duplicates are ignored. A newer `frame_id` abandons an incomplete older frame, which is counted as dropped. A frame is only delivered when all `count` chunks have arrived. The reference implementations are `HandTracking/video_stream.py` and `Networking/VideoStreamCore.cs`.

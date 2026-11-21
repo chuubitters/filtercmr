@@ -81,3 +81,7 @@ Thumbs.db
 desktop.ini
 *.swp
 *~
+
+# .NET verification harness build output
+Tools/**/bin/
+Tools/**/obj/
