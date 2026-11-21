@@ -1,0 +1,8 @@
+# FILTER CMR hand-tracking service
+# Apple Silicon: resolves to mediapipe 1.2.x (any Python 3.9+).
+# Intel Macs: the newest mediapipe with x86_64 macOS wheels is 0.10.21 (Python 3.9-3.12).
+mediapipe>=0.10.21,<2
+# mediapipe depends on opencv-contrib-python; do NOT also install opencv-python
+# (two packages providing cv2 conflict).
+opencv-contrib-python>=4.8
+numpy>=1.24
